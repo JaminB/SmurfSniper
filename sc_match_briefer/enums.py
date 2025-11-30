@@ -2,10 +2,10 @@ from enum import Enum
 
 
 class Region(Enum):
-    US = "US"
-    EU = "EU"
-    KR = "KR"
-    CN = "CN"
+    US = 1
+    EU = 2
+    KR = 3
+    CN = 5
 
 
 class RaceCode(Enum):

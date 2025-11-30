@@ -2,7 +2,7 @@ import httpx
 from typing import Optional, List, Dict
 from pydantic import BaseModel
 
-from team import Team
+from sc_match_briefer.models.team import Team
 
 
 class Character(BaseModel):
