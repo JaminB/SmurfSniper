@@ -1,0 +1,147 @@
+[
+    {
+        "leagueMax": 5,
+        "ratingMax": 5293,
+        "totalGamesPlayed": 1491,
+        "previousStats": {
+            "rating": 3189,
+            "gamesPlayed": 2,
+            "rank": 48024
+        },
+        "currentStats": {
+            "rating": null,
+            "gamesPlayed": null,
+            "rank": null
+        },
+        "members": {
+            "protossGamesPlayed": 1491,
+            "character": {
+                "realm": 1,
+                "name": "Cheesetown#1",
+                "id": 881395,
+                "accountId": 881395,
+                "region": "US",
+                "battlenetId": 735096,
+                "tag": "Cheesetown",
+                "discriminator": null
+            },
+            "account": {
+                "battleTag": "SackOfSheets#1464",
+                "id": 881395,
+                "partition": "GLOBAL",
+                "hidden": null,
+                "tag": "SackOfSheets",
+                "discriminator": 1464
+            },
+            "clan": {
+                "tag": "dBlowe",
+                "id": 88793,
+                "region": "US",
+                "name": "DAVID BLOWE",
+                "members": null,
+                "activeMembers": null,
+                "avgRating": null,
+                "avgLeagueType": null,
+                "games": null
+            },
+            "proId": 517304,
+            "proNickname": "arterian",
+            "proPlayer": {
+                "proPlayer": {
+                    "id": 517304,
+                    "aligulacId": null,
+                    "nickname": "arterian",
+                    "name": null,
+                    "country": null,
+                    "birthday": null,
+                    "earnings": null,
+                    "updated": null,
+                    "version": null
+                },
+                "proTeam": null,
+                "links": []
+            },
+            "raceGames": {
+                "PROTOSS": 1491
+            }
+        }
+    },
+    {
+        "leagueMax": 5,
+        "ratingMax": 3576,
+        "totalGamesPlayed": 785,
+        "previousStats": {
+            "rating": null,
+            "gamesPlayed": null,
+            "rank": null
+        },
+        "currentStats": {
+            "rating": null,
+            "gamesPlayed": null,
+            "rank": null
+        },
+        "members": {
+            "protossGamesPlayed": 785,
+            "character": {
+                "realm": 1,
+                "name": "CheeseTown#1",
+                "id": 10428993,
+                "accountId": 8448290,
+                "region": "EU",
+                "battlenetId": 9052471,
+                "tag": "CheeseTown",
+                "discriminator": null
+            },
+            "account": {
+                "battleTag": "TheUndermind#11990",
+                "id": 8448290,
+                "partition": "GLOBAL",
+                "hidden": null,
+                "tag": "TheUndermind",
+                "discriminator": 11990
+            },
+            "raceGames": {
+                "PROTOSS": 785
+            }
+        }
+    },
+    {
+        "leagueMax": 3,
+        "ratingMax": 3080,
+        "totalGamesPlayed": 52,
+        "previousStats": {
+            "rating": null,
+            "gamesPlayed": null,
+            "rank": null
+        },
+        "currentStats": {
+            "rating": null,
+            "gamesPlayed": null,
+            "rank": null
+        },
+        "members": {
+            "protossGamesPlayed": 52,
+            "character": {
+                "realm": 1,
+                "name": "CheeseTown#1",
+                "id": 340913967,
+                "accountId": 320955690,
+                "region": "KR",
+                "battlenetId": 7584066,
+                "tag": "CheeseTown",
+                "discriminator": null
+            },
+            "account": {
+                "battleTag": "UrMomsNewMan#11209",
+                "id": 320955690,
+                "partition": "GLOBAL",
+                "hidden": null,
+                "tag": "UrMomsNewMan",
+                "discriminator": 11209
+            },
+            "raceGames": {
+                "PROTOSS": 52
+            }
+        }
+    }
+]

@@ -1,0 +1,34 @@
+{
+  "isReplay": false,
+  "displayTime": 0.0,
+  "players": [
+    {
+      "id": 1,
+      "name": "BuyOneGetOne",
+      "type": "user",
+      "race": "Terr",
+      "result": "Undecided"
+    },
+    {
+      "id": 2,
+      "name": "Eason",
+      "type": "user",
+      "race": "Prot",
+      "result": "Undecided"
+    },
+    {
+      "id": 3,
+      "name": "asdf",
+      "type": "user",
+      "race": "Prot",
+      "result": "Undecided"
+    },
+    {
+      "id": 4,
+      "name": "SwedishGuy",
+      "type": "user",
+      "race": "random",
+      "result": "Undecided"
+    }
+  ]
+}
