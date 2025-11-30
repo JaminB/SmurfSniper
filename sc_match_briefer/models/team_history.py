@@ -35,6 +35,11 @@ class TeamHistoryData(BaseModel):
         ]
 
 
+from datetime import datetime, timedelta
+from typing import List, Dict
+from pydantic import BaseModel, computed_field
+
+
 class TeamHistory(BaseModel):
     legacy_uid: str
     timestamps: List[datetime]
@@ -54,7 +59,7 @@ class TeamHistory(BaseModel):
         losses = 0
 
         for ts, delta in zip(self.timestamps[1:], self.mmr_deltas):
-            if ts < cutoff:
+            if days != -1 and ts < cutoff:
                 continue
             if delta > 0:
                 wins += 1
@@ -92,3 +97,24 @@ class TeamHistory(BaseModel):
     @property
     def losses_last_week(self) -> int:
         return self._count_recent(7)["losses"]
+
+    @computed_field
+    @property
+    def wins_last_month(self) -> int:
+        return self._count_recent(30)["wins"]
+
+    @computed_field
+    @property
+    def losses_last_month(self) -> int:
+        return self._count_recent(30)["losses"]
+
+    @computed_field
+    @property
+    def wins_lifetime(self) -> int:
+        return self._count_recent(-1)["wins"]
+
+    @computed_field
+    @property
+    def losses_lifetime(self) -> int:
+        return self._count_recent(-1)["losses"]
+

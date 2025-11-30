@@ -14,6 +14,10 @@ class RaceCode(Enum):
     ZERG = 3
     RANDOM = 4
 
+    @classmethod
+    def from_alias(cls, alias: str) -> "RaceCode":
+        pass
+
 
 class TeamFormat(Enum):
     _1V1 = 201
@@ -26,3 +30,20 @@ class TeamFormat(Enum):
 class TeamType(Enum):
     ARRANGED = 0
     RANDOM = 1
+
+
+from enum import IntEnum
+
+
+class League(IntEnum):
+    BRONZE = 0
+    SILVER = 1
+    GOLD = 2
+    PLATINUM = 3
+    DIAMOND = 4
+    MASTER = 5
+    GRANDMASTER = 6
+
+    @classmethod
+    def from_int(cls, value: int) -> "League":
+        return cls(value)

@@ -1,5 +1,5 @@
 from typing import List
-from enums import Region, TeamFormat, TeamType
+from sc_match_briefer.enums import Region, TeamFormat, TeamType
 
 
 def create_team_legacy_uid(
@@ -12,6 +12,4 @@ def create_team_legacy_uid(
         f"{m.character.realm}.{m.character.battlenetId}.{m.character.realm}"
         for m in members
     ])
-    print(queue_type, team_type, region, legacy_id)
-    print(queue_type.value, team_type.value, region.value, legacy_id)
     return f"{queue_type.value}-{team_type.value}-{region.value}-{legacy_id}"

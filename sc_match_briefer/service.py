@@ -1,6 +1,3 @@
-from idlelib import history
-
-import yaml
 import asyncio
 import httpx
 
@@ -11,7 +8,7 @@ from sc_match_briefer.models.config import Config
 
 
 
-CONFIG_FILE = r"C:\Users\jamin\PycharmProjects\sc2-match-briefer\config.yaml"
+CONFIG_FILE = r"/Users/jamin.becker/PycharmProjects/sc2-match-briefer/config.yaml"
 URL = "http://localhost:6119/game"
 
 config = Config.from_config_file(CONFIG_FILE)
@@ -34,7 +31,7 @@ async def poll_games():
                             continue
                         logger.info(f"Looking up {player.name}.")
                         player_stats = player.get_best_match(min_mmr=config.me.mmr - 500, max_mmr=config.me.mmr + 500)
-                        print_player_summary(player_name = player.name, player_stats = player_stats, history = player_stats.get_match_history())
+                        print_player_summary(player_name = player.name, player_stats = player_stats, history = player_stats.match_history)
             except Exception as e:
                 print("Error:", e)
 

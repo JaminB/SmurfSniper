@@ -1,8 +1,9 @@
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Set
 from pydantic import BaseModel
 import httpx
 
+from sc_match_briefer.enums import League
 from sc_match_briefer.logger import logger
 from sc_match_briefer.models.shared import PreviousStats, CurrentStats
 from sc_match_briefer.models.character import Character
@@ -32,32 +33,38 @@ class PlayerStats(BaseModel):
     currentStats: CurrentStats
     members: Members
 
-    def legacy_uid(
-        self,
-        queue_type: TeamFormat,
-        team_type: TeamType = TeamType.ARRANGED,
-    ) -> str:
-        region_enum = Region[self.members.character.region]
-        return create_team_legacy_uid(
-            queue_type=queue_type,
-            team_type=team_type,
-            region=region_enum,
-            members=[self.members],
-        )
+    # internal memoized cache per instance
+    _match_history_cache: Optional[TeamHistory] = None
 
-    def get_match_history(self) -> Optional[TeamHistory]:
-        urls = []
-        for team in self.members.character.teams():
+    @property
+    def max_league(self) -> str:
+        """Return the string league name from leagueMax integer."""
+        return League.from_int(self.leagueMax).name
+
+    @property
+    def match_history(self) -> Optional[TeamHistory]:
+        """
+        Fetch full match history across all teams, merge into a single time series,
+        dedupe timestamps, and cache for future use.
+        """
+        # --- return memoized version ---
+        if self._match_history_cache is not None:
+            return self._match_history_cache
+
+        # collect all UIDs
+        urls: Set[str] = set()
+        for team in self.members.character.teams:
             if team.legacyUid:
-                urls.append(f"teamLegacyUid={team.legacyUid}")
+                urls.add(f"teamLegacyUid={team.legacyUid}")
 
         if not urls:
             return None
 
+        # limit to first 10 UIDs (API constraint/subtle rate protection)
         url = (
-                "https://sc2pulse.nephest.com/sc2/api/team-histories?"
-                + "&".join(urls)
-                + "&groupBy=LEGACY_UID&static=LEGACY_ID&history=TIMESTAMP&history=RATING"
+            "https://sc2pulse.nephest.com/sc2/api/team-histories?"
+            + "&".join(list(urls)[:10])
+            + "&groupBy=LEGACY_UID&static=LEGACY_ID&history=TIMESTAMP&history=RATING"
         )
 
         with httpx.Client(timeout=10.0) as client:
@@ -65,7 +72,7 @@ class PlayerStats(BaseModel):
             r.raise_for_status()
             data = r.json()
 
-        merged_points: list[TeamHistoryPoint] = []
+        merged_points: List[TeamHistoryPoint] = []
 
         for entry in data:
             history = entry.get("history", {})
@@ -79,19 +86,36 @@ class PlayerStats(BaseModel):
 
         merged_points.sort(key=lambda p: p.timestamp)
 
-        deduped = []
+        deduped: List[TeamHistoryPoint] = []
         last_ts = None
         for p in merged_points:
-            if last_ts != p.timestamp:
+            if p.timestamp != last_ts:
                 deduped.append(p)
                 last_ts = p.timestamp
 
-        return TeamHistory(
+        history = TeamHistory(
             legacy_uid="merged",
             timestamps=[p.timestamp for p in deduped],
             ratings=[p.rating for p in deduped],
         )
 
+        self._match_history_cache = history
+        return history
+
+
+    def legacy_uid(
+        self,
+        queue_type: TeamFormat,
+        team_type: TeamType = TeamType.ARRANGED,
+    ) -> str:
+        """Compute the player's team legacy UID for a given queue."""
+        region_enum = Region[self.members.character.region]
+        return create_team_legacy_uid(
+            queue_type=queue_type,
+            team_type=team_type,
+            region=region_enum,
+            members=[self.members],
+        )
 
 class Player(BaseModel):
     id: int
@@ -132,7 +156,7 @@ class Player(BaseModel):
         for match in filtered:
             logger.info(f"Evaluating {self.name} candidate with MMR={match.currentStats.rating}")
 
-            for team in match.members.character.teams():
+            for team in match.members.character.teams:
                 if not team.lastPlayed:
                     continue
 
@@ -143,55 +167,3 @@ class Player(BaseModel):
                     best = match
 
         return best
-
-
-def print_player_summary(player_name: str, player_stats: PlayerStats, history: "TeamHistory"):
-    """
-    Print a clean human-friendly summary of player + team history.
-    """
-
-    char = player_stats.members.character
-
-    rows = []
-
-    def add(label, value):
-        rows.append((label, value))
-
-    # Basic identity
-    add("Player", char.name)
-    add("Region", char.region)
-    add("Race", player_stats.members.raceGames)
-
-    # Rating summary
-    add("Current Rating", player_stats.currentStats.rating)
-    add("Highest Rating", player_stats.ratingMax)
-    add("Total Games Played", player_stats.totalGamesPlayed)
-
-    # Legacy UID
-    add("Legacy UID", history.legacy_uid)
-
-    # Recent wins/losses
-    add("Wins (1 day)", history.wins_last_day)
-    add("Losses (1 day)", history.losses_last_day)
-
-    add("Wins (3 days)", history.wins_last_3_days)
-    add("Losses (3 days)", history.losses_last_3_days)
-
-    add("Wins (7 days)", history.wins_last_week)
-    add("Losses (7 days)", history.losses_last_week)
-
-    # Rating movement
-    if history.ratings:
-        add("Latest Rating", history.ratings[-1])
-        add("First Recorded Rating", history.ratings[0])
-        add("MMR Change (all-time)", history.ratings[-1] - history.ratings[0])
-
-    # Print pretty table
-    print("\n" + "=" * 50)
-    print(f"  SC2 Player Summary: {player_name}")
-    print("=" * 50)
-
-    for label, value in rows:
-        print(f"{label:<25} {value}")
-
-    print("=" * 50 + "\n")
