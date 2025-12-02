@@ -37,12 +37,6 @@ class TeamHistoryData(BaseModel):
         ]
 
 
-from datetime import datetime, timedelta
-from typing import Dict, List
-
-from pydantic import BaseModel, computed_field
-
-
 class TeamHistory(BaseModel):
     legacy_uid: str
     timestamps: List[datetime]
@@ -119,3 +113,38 @@ class TeamHistory(BaseModel):
     @property
     def losses_lifetime(self) -> int:
         return self._count_recent(-1)["losses"]
+
+    @property
+    def first_game_played(self) -> Optional[datetime]:
+        return min(self.timestamps)
+
+    @property
+    def last_game_played(self) -> Optional[datetime]:
+        return max(self.timestamps)
+
+    def sparkline(self, days: int = 30) -> str:
+        if not self.timestamps or not self.ratings:
+            return "(no data)"
+
+        cutoff = datetime.utcnow() - timedelta(days=days)
+
+        points = [r for ts, r in zip(self.timestamps, self.ratings) if ts >= cutoff]
+
+        if len(points) < 3:
+            points = self.ratings[-20:]
+
+        if len(points) < 3:
+            return "(insufficient data)"
+
+        # Normalize to 0-1 scale
+        mn, mx = min(points), max(points)
+        span = max(mx - mn, 1)
+        normalized = [(p - mn) / span for p in points]
+
+        # Unicode bar levels (low → high)
+        bars = "▁▂▃▄▅▆▇█"
+        n_levels = len(bars)
+
+        spark = "".join(bars[int(v * (n_levels - 1))] for v in normalized)
+
+        return spark

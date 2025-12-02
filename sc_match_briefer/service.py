@@ -16,9 +16,9 @@ config = Config.from_config_file(CONFIG_FILE)
 
 
 async def poll_games():
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         previous_state = None
-
+        close_all_overlays()
         while True:
             try:
                 r = await client.get(URL)
@@ -26,13 +26,13 @@ async def poll_games():
                 data = r.json()
 
                 players = data.get("players", [])
-                """
+
                 if any(p.get("result") in ["Victory", "Defeat"] for p in players):
                     close_all_overlays()
                     logger.info("Game concluded. Waiting for next lobby...")
                     await asyncio.sleep(5)
                     continue
-                """
+
                 if not players:
                     await asyncio.sleep(5)
                     continue
@@ -46,14 +46,13 @@ async def poll_games():
                     continue
 
                 logger.info(f"New game detected: {current_state}")
+                close_all_overlays()
                 previous_state = current_state
 
-                # ---- SEPARATE TEAMS ----
                 my_name = config.me.name
                 my_team = []
                 opp_team = []
 
-                # Split into teams by your teammates configuration
                 for p in players:
                     name = p.get("name")
                     if name == my_name or name in config.team.members:
@@ -66,28 +65,10 @@ async def poll_games():
                     await asyncio.sleep(5)
                     continue
 
-                if len(opp_team) == 1:
-                    opp = opp_team[0]
-                    logger.info(f"Looking up opponent {opp['name']} (1v1)…")
-
-                    player_obj = Player(**opp)
-                    stats = player_obj.get_best_match(
-                        min_mmr=config.me.mmr - 500,
-                        max_mmr=config.me.mmr + 500,
-                    )
-                    analysis = PlayerAnalysis.from_player_stats(
-                        stats, player=player_obj
-                    )
-
-                    two_tone_chime()
-                    analysis.show_overlay(duration_seconds=180)
-                    await asyncio.sleep(5)
-                    continue
-
+                # TODO remove this and support 3v3 and 4v4
                 if len(opp_team) > 2:
                     opp_team = [opp_team[0], opp_team[1]]
 
-                # ---- 2v2 MODE ----
                 if len(opp_team) == 2:
                     logger.info(
                         f"Detected 2v2. Opponents: {[p['name'] for p in opp_team]}"
@@ -95,7 +76,6 @@ async def poll_games():
 
                     p1_raw, p2_raw = opp_team
 
-                    # Get stats for both opponents
                     opp1 = Player(**p1_raw)
                     opp2 = Player(**p2_raw)
 
@@ -118,8 +98,26 @@ async def poll_games():
                     # Team HUD
                     team_hud = Team2V2Analysis(ps1, ps2)
                     two_tone_chime()
-                    team_hud.show_overlay(duration_seconds=180)
+                    team_hud.show_overlay(duration_seconds=120)
 
+                    await asyncio.sleep(5)
+                    continue
+
+                else:
+                    opp = opp_team[0]
+                    logger.info(f"Looking up opponent {opp['name']} (1v1)…")
+
+                    player_obj = Player(**opp)
+                    stats = player_obj.get_best_match(
+                        min_mmr=config.me.mmr - 500,
+                        max_mmr=config.me.mmr + 500,
+                    )
+                    analysis = PlayerAnalysis.from_player_stats(
+                        stats, player=player_obj
+                    )
+
+                    two_tone_chime()
+                    analysis.show_overlay(duration_seconds=120)
                     await asyncio.sleep(5)
                     continue
 

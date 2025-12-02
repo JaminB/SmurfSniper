@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
-from typing import Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 from PySide6.QtCore import Qt, QTimer
@@ -10,7 +10,49 @@ from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QVBoxLayout, QW
 
 from sc_match_briefer.enums import League, RaceCode
 from sc_match_briefer.models.player import Player, PlayerStats
-from sc_match_briefer.overlay_manager import close_all_overlays, register_overlay
+from sc_match_briefer.overlay_manager import register_overlay
+from sc_match_briefer.utils import human_friendly_duration
+
+# ---------- Shared helpers ----------
+
+_TREND_SYMBOLS: Dict[str, str] = {
+    "strong rising": "▲▲",
+    "rising": "▲",
+    "falling": "▼",
+    "strong falling": "▼▼",
+    "flat": "→",
+    "unknown": "?",
+}
+
+
+def _trend_symbol(trend: str) -> str:
+    return _TREND_SYMBOLS.get(trend, "?")
+
+
+def _sparkline_for(player_analysis: "PlayerAnalysis", days: int = 7) -> str:
+    hist = player_analysis.player_stats.match_history
+    if not hist:
+        return ""
+    return hist.sparkline(days=days)
+
+
+def _top_teammate_rows(
+    p: "PlayerAnalysis",
+    limit: int = 3,
+    include_games: bool = False,
+) -> List[str]:
+    rows: List[str] = []
+    for idx, (name, info) in enumerate(p.teammates.items()):
+        if idx >= limit:
+            break
+        ts = info.get("last_played")
+        ts_str = ts.isoformat() if isinstance(ts, datetime) else "unknown"
+        if include_games:
+            games = info.get("count", 0)
+            rows.append(f"{name:<12} {games:>2}g  {ts_str}")
+        else:
+            rows.append(f"{name:<14} {ts_str}")
+    return rows or ["(none)"]
 
 
 class PlayerAnalysis(BaseModel):
@@ -18,7 +60,7 @@ class PlayerAnalysis(BaseModel):
     player_stats: PlayerStats
 
     @classmethod
-    def from_player_name(cls, str_player_name: str) -> PlayerAnalysis:
+    def from_player_name(cls, str_player_name: str) -> "PlayerAnalysis":
         str_player_name = str_player_name.strip()
         return cls.from_player(
             Player(
@@ -41,13 +83,21 @@ class PlayerAnalysis(BaseModel):
         cls, player_stats: PlayerStats, player: Optional[Player] = None
     ) -> "PlayerAnalysis":
         current_race = "Unknown"
-        if player.race is not None:
+        if player and player.race is not None:
             current_race = RaceCode.from_alias(player.race).name
         return cls(player_stats=player_stats, current_race=current_race)
 
     @property
     def name(self) -> str:
         return self.player_stats.members.character.name
+
+    @property
+    def first_game_played(self) -> Optional[datetime]:
+        return self.player_stats.match_history.first_game_played
+
+    @property
+    def last_game_played(self) -> Optional[datetime]:
+        return self.player_stats.match_history.last_game_played
 
     @property
     def max_league(self) -> str:
@@ -66,15 +116,6 @@ class PlayerAnalysis(BaseModel):
 
     @property
     def mmr_trend(self) -> str:
-        """
-        Computes a real regression slope over the last ~100 MMR samples.
-        No numpy required. Uses least squares slope calculation:
-
-            slope = Σ((x - x̄)(y - ȳ)) / Σ((x - x̄)^2)
-
-        Then maps slope to a human-readable trend string.
-        """
-
         hist = self.player_stats.match_history
         if not hist or len(hist.ratings) < 5:
             return "unknown"
@@ -83,14 +124,11 @@ class PlayerAnalysis(BaseModel):
         n = len(y)
         x = list(range(n))
 
-        # Means
         mean_x = sum(x) / n
         mean_y = sum(y) / n
 
-        # Numerator & denominator for slope
         num = sum((xi - mean_x) * (yi - mean_y) for xi, yi in zip(x, y))
         den = sum((xi - mean_x) ** 2 for xi in x)
-
         if den == 0:
             return "unknown"
 
@@ -120,15 +158,6 @@ class PlayerAnalysis(BaseModel):
 
     @property
     def smurf_warning(self) -> Optional[str]:
-        """
-        Pure win-rate–based smurf heuristic.
-
-        Heuristic rules:
-          • Last 3 days winrate >= 80% → "Likely Smurf"
-          • Last 7 days winrate >= 75% → "Possible Smurf"
-          • Lifetime winrate >= 70%    → "Suspiciously strong"
-        """
-
         h = self.player_stats.match_history
         if not h:
             return None
@@ -194,15 +223,8 @@ class PlayerAnalysis(BaseModel):
         return self.player_stats.match_history.losses_lifetime
 
     @property
-    def last_played(self) -> Optional[datetime]:
-        timestamps = self.player_stats.match_history.timestamps
-        if not timestamps:
-            return None
-        return max(timestamps)
-
-    @property
     def teammates(self) -> dict[str, dict[str, Optional[datetime]]]:
-        result = {}
+        result: dict[str, dict[str, Optional[datetime]]] = {}
         my_name = self.name
         history = self.player_stats.match_history
 
@@ -242,8 +264,13 @@ class PlayerAnalysis(BaseModel):
             for name, info in self.teammates.items()
         }
 
+        first = self.first_game_played
         return {
             "Player": self.name,
+            "Playing For": (
+                f"{human_friendly_duration(first)} ({first})" if first else "unknown"
+            ),
+            "Most Recent Game": self.last_game_played,
             "Max League": self.max_league,
             "Current MMR": self.current_mmr,
             "Trend": self.mmr_trend,
@@ -261,7 +288,6 @@ class PlayerAnalysis(BaseModel):
             "Losses (30d)": self.losses_last_month,
             "Lifetime Wins": self.wins_lifetime,
             "Lifetime Losses": self.losses_lifetime,
-            "Last Played": self.last_played.isoformat() if self.last_played else None,
             "Frequent Teammates": partners_readable,
         }
 
@@ -275,65 +301,45 @@ class PlayerAnalysis(BaseModel):
     def show_overlay(self, duration_seconds: int = 30):
         summary = self.summary()
 
-        trend_symbol = {
-            "strong rising": "▲▲",
-            "rising": "▲",
-            "falling": "▼",
-            "strong falling": "▼▼",
-            "flat": "→",
-            "unknown": "?",
-        }.get(self.mmr_trend, "")
+        trend_symbol = _trend_symbol(self.mmr_trend)
+        spark = _sparkline_for(self, days=7)
 
         primary_race = summary["Most Played Race"]
         current_race = summary["Current Race"]
-
         race_note = ""
         if current_race and primary_race and current_race != primary_race:
-            race_note = f" (deviating from {primary_race})"
+            race_note = f" (→ {primary_race})"
 
         smurf_note = self.smurf_warning or ""
 
-        lines = [
-            f"Player: {summary['Player']}",
-            f"Highest League: {summary['Max League']}",
-            f"MMR: {summary['Current MMR']}  {trend_symbol}",
+        top_lines = [
+            f"{summary['Player']} | {summary['Max League']}",
+            f"MMR {summary['Current MMR']} {trend_symbol}    {spark}",
             f"Race: {current_race}{race_note}",
+            f"First Played: {summary['Playing For']}",
         ]
-
         if smurf_note:
-            lines.append(f"Smurf Check: {smurf_note}")
+            top_lines.append(f"⚠ {smurf_note}")
+        top_block = "\n".join(top_lines)
 
-        lines.extend(
-            [
-                f"Last Played: {summary['Last Played']}",
-                "",
-                "Performance:",
-                f" 1d   W:{summary['Wins (1d)']}  L:{summary['Losses (1d)']}",
-                f" 3d   W:{summary['Wins (3d)']}  L:{summary['Losses (3d)']}",
-                f" 7d   W:{summary['Wins (7d)']}  L:{summary['Losses (7d)']}",
-                f"30d   W:{summary['Wins (30d)']} L:{summary['Losses (30d)']}",
-                f"LFT   W:{summary['Lifetime Wins']} L:{summary['Lifetime Losses']}",
-                "",
-                "Recent Teammates:",
-            ]
+        perf_block = (
+            f"1d {summary['Wins (1d)']}W/{summary['Losses (1d)']}L   "
+            f"3d {summary['Wins (3d)']}W/{summary['Losses (3d)']}L\n"
+            f"7d {summary['Wins (7d)']}W/{summary['Losses (7d)']}L   "
+            f"30d {summary['Wins (30d)']}W/{summary['Losses (30d)']}L\n"
+            f"LFT {summary['Lifetime Wins']}W/{summary['Lifetime Losses']}L\n"
         )
 
-        teammate_rows = []
-        for name, info in self.teammates.items():
-            ts = info.get("last_played")
-            ts_str = ts.isoformat() if ts else "unknown"
-            teammate_rows.append(f"  {name:<14} {ts_str}")
-
-        text = "\n".join(lines + teammate_rows)
+        tm_rows = _top_teammate_rows(self, limit=3, include_games=False)
+        teammates_text = "\n".join(tm_rows)
 
         app = QApplication.instance()
-        created = False
         if not app:
             app = QApplication(sys.argv)
-            created = True
 
         overlay = QWidget()
         register_overlay(overlay)
+
         overlay.setWindowFlags(
             Qt.FramelessWindowHint
             | Qt.WindowStaysOnTopHint
@@ -343,132 +349,53 @@ class PlayerAnalysis(BaseModel):
         overlay.setAttribute(Qt.WA_TranslucentBackground)
         overlay.setAttribute(Qt.WA_ShowWithoutActivating)
 
-        layout = QVBoxLayout()
-        label = QLabel(text)
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(6)
 
-        label.setStyleSheet(
-            """
+        row_layout = QHBoxLayout()
+        row_layout.setSpacing(12)
+
+        style = """
             color: #FFFFFF;
-            background-color: rgba(10, 10, 10, 220);
-            padding: 16px 22px;
-            border-radius: 12px;
+            background-color: rgba(15, 15, 15, 215);
+            padding: 10px 16px;
+            border-radius: 10px;
             font-family: 'Segoe UI';
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
-            line-height: 155%;
-            text-shadow: 0 0 6px rgba(0,0,0,0.85);
+            line-height: 150%;
         """
-        )
 
-        layout.addWidget(label)
-        overlay.setLayout(layout)
+        left_label = QLabel(top_block)
+        mid_label = QLabel(perf_block)
+        right_label = QLabel(teammates_text)
+
+        for lbl in (left_label, mid_label, right_label):
+            lbl.setStyleSheet(style)
+
+        row_layout.addWidget(left_label)
+        row_layout.addWidget(mid_label)
+        row_layout.addWidget(right_label)
+
+        main_layout.addLayout(row_layout)
+        overlay.setLayout(main_layout)
 
         screen = app.primaryScreen().geometry()
         overlay.adjustSize()
-        overlay.move(screen.width() - overlay.width() - 30, 40)
+        x = int((screen.width() - overlay.width()) / 2)
+        y = 0
+        overlay.move(x, y)
 
         overlay.show()
 
         QTimer.singleShot(duration_seconds * 1000, overlay.close)
 
-        if created:
-            app.exec()
+        for _ in range(20):
+            app.processEvents()
 
 
-class Team2v2Analysis(BaseModel):
-    p1: PlayerAnalysis
-    p2: PlayerAnalysis
-
-    @property
-    def team_name(self) -> str:
-        """Combine players as a duo name."""
-        return f"{self.p1.name} + {self.p2.name}"
-
-    @property
-    def races(self) -> str:
-        """Terr + Prot + deviation."""
-        r1 = self.p1.current_race or "Unknown"
-        r2 = self.p2.current_race or "Unknown"
-        return f"{r1} + {r2}"
-
-    @property
-    def average_mmr(self) -> Optional[int]:
-        mmrs = [self.p1.current_mmr, self.p2.current_mmr]
-        mmrs = [m for m in mmrs if m is not None]
-        return sum(mmrs) // len(mmrs) if mmrs else None
-
-    @property
-    def combined_league(self) -> str:
-        """Take strongest league between them."""
-        leagues = [self.p1.max_league, self.p2.max_league]
-        # approximate league strength ordering
-        order = [
-            "BRONZE",
-            "SILVER",
-            "GOLD",
-            "PLATINUM",
-            "DIAMOND",
-            "MASTER",
-            "GRANDMASTER",
-        ]
-        ranked = sorted(leagues, key=lambda L: order.index(L))
-        return ranked[-1]
-
-    @property
-    def p1_winrate_lifetime(self) -> float:
-        w = self.p1.wins_lifetime
-        l = self.p1.losses_lifetime
-        return w / (w + l) if (w + l) > 0 else 0.0
-
-    @property
-    def p2_winrate_lifetime(self) -> float:
-        w = self.p2.wins_lifetime
-        l = self.p2.losses_lifetime
-        return w / (w + l) if (w + l) > 0 else 0.0
-
-    @property
-    def combined_winrate(self) -> float:
-        """Average winrate; simple team indicator."""
-        return (self.p1_winrate_lifetime + self.p2_winrate_lifetime) / 2
-
-    @property
-    def smurf_warning(self) -> Optional[str]:
-        """
-        Team-level smurf heuristic:
-          • if either player is flagged → show strongest warning
-          • if both are suspicious → escalate severity
-        """
-        s1 = self.p1.smurf_warning
-        s2 = self.p2.smurf_warning
-
-        if s1 and s2:
-            return f"⚠️⚠️ BOTH players exhibit smurf indicators\n  - {s1}\n  - {s2}"
-        if s1:
-            return f"⚠️ {self.p1.name}: {s1}"
-        if s2:
-            return f"⚠️ {self.p2.name}: {s2}"
-        return None
-
-    def summary(self) -> dict:
-        return {
-            "Team": self.team_name,
-            "Races": self.races,
-            "MMR (Avg)": self.average_mmr,
-            "Combined League": self.combined_league,
-            "Player 1 Trend": self.p1.mmr_trend,
-            "Player 2 Trend": self.p2.mmr_trend,
-            "Player 1 Winrate": round(self.p1_winrate_lifetime * 100, 1),
-            "Player 2 Winrate": round(self.p2_winrate_lifetime * 100, 1),
-            "Combined Winrate": round(self.combined_winrate * 100, 1),
-            "Team Smurf Warning": self.smurf_warning,
-        }
-
-    def pretty_print(self):
-        s = self.summary()
-        print("\n=== TEAM ANALYSIS ===")
-        for k, v in s.items():
-            print(f"{k:22}: {v}")
-        print("======================\n")
+# ---------- Team2V2Analysis ----------
 
 
 class Team2V2Analysis:
@@ -476,38 +403,65 @@ class Team2V2Analysis:
         self.p1 = p1
         self.p2 = p2
 
-    def _build_teammate_table(self, p: PlayerAnalysis) -> str:
-        """
-        Builds a clean aligned teammate table:
-        Name | Last Played | Games
-        """
-        rows = []
-        for name, info in p.teammates.items():
-            ts = info.get("last_played")
-            ts_str = ts.isoformat() if isinstance(ts, datetime) else "unknown"
-            games = info.get("count", 0)
+    def summary(self) -> dict:
+        s1 = self.p1.summary()
+        s2 = self.p2.summary()
 
-            rows.append(f"{name:<14}  {ts_str:<22}  {games:>2}g")
+        def safe_avg(a, b):
+            if a is None or b is None:
+                return None
+            return round((a + b) / 2, 1)
 
-        if not rows:
-            return "  (no teammate history)"
+        combined_perf = {
+            "Wins (1d)": s1["Wins (1d)"] + s2["Wins (1d)"],
+            "Losses (1d)": s1["Losses (1d)"] + s2["Losses (1d)"],
+            "Wins (3d)": s1["Wins (3d)"] + s2["Wins (3d)"],
+            "Losses (3d)": s1["Losses (3d)"] + s2["Losses (3d)"],
+            "Wins (7d)": s1["Wins (7d)"] + s2["Wins (7d)"],
+            "Losses (7d)": s1["Losses (7d)"] + s2["Losses (7d)"],
+            "Wins (30d)": s1["Wins (30d)"] + s2["Wins (30d)"],
+            "Losses (30d)": s1["Losses (30d)"] + s2["Losses (30d)"],
+            "Wins (Lifetime)": s1["Lifetime Wins"] + s2["Lifetime Wins"],
+            "Losses (Lifetime)": s1["Lifetime Losses"] + s2["Lifetime Losses"],
+        }
 
-        return "\n".join("  " + r for r in rows)
+        most_recent = max(
+            s1["Most Recent Game"],
+            s2["Most Recent Game"],
+        )
 
-    def _build_player_block(self, p: PlayerAnalysis) -> str:
-        """
-        Formats a compact block of text for one player.
-        """
+        return {
+            "Team Players": [s1["Player"], s2["Player"]],
+            "Avg MMR": safe_avg(s1["Current MMR"], s2["Current MMR"]),
+            "MMR Trends": {
+                s1["Player"]: s1["Trend"],
+                s2["Player"]: s2["Trend"],
+            },
+            "Smurf Warnings": {
+                s1["Player"]: s1["Smurf Warning"],
+                s2["Player"]: s2["Smurf Warning"],
+            },
+            "Races": {
+                s1["Player"]: {
+                    "Current": s1["Current Race"],
+                    "Primary": s1["Most Played Race"],
+                },
+                s2["Player"]: {
+                    "Current": s2["Current Race"],
+                    "Primary": s2["Most Played Race"],
+                },
+            },
+            "Performance (Combined)": combined_perf,
+            "Most Recent Match Time": most_recent,
+            "Frequent Teammates": {
+                s1["Player"]: s1["Frequent Teammates"],
+                s2["Player"]: s2["Frequent Teammates"],
+            },
+        }
+
+    def _build_player_block_for_print(self, p: PlayerAnalysis) -> str:
         s = p.summary()
-
-        trend_symbol = {
-            "strong rising": "▲▲",
-            "rising": "▲",
-            "falling": "▼",
-            "strong falling": "▼▼",
-            "flat": "→",
-            "unknown": "?",
-        }.get(p.mmr_trend, "")
+        trend_symbol = _trend_symbol(p.mmr_trend)
 
         race_note = ""
         if s["Current Race"] != s["Most Played Race"]:
@@ -515,16 +469,15 @@ class Team2V2Analysis:
 
         smurf_note = p.smurf_warning or ""
 
-        block = [
+        lines = [
             f"{s['Player']}",
             f"MMR: {s['Current MMR']}  {trend_symbol}",
             f"Race: {s['Current Race']}{race_note}",
         ]
-
         if smurf_note:
-            block.append(f"⚠ {smurf_note}")
+            lines.append(f"⚠ {smurf_note}")
 
-        block.extend(
+        lines.extend(
             [
                 "",
                 "Perf:",
@@ -535,35 +488,71 @@ class Team2V2Analysis:
                 f"LFT {s['Lifetime Wins']}W/{s['Lifetime Losses']}L",
             ]
         )
+        return "\n".join(lines)
 
-        return "\n".join(block)
+    def _build_teammate_table_for_print(self, p: PlayerAnalysis) -> str:
+        rows = []
+        for name, info in p.teammates.items():
+            ts = info.get("last_played")
+            ts_str = ts.isoformat() if isinstance(ts, datetime) else "unknown"
+            games = info.get("count", 0)
+            rows.append(f"{name:<14}  {ts_str:<22}  {games:>2}g")
+        return "\n".join(rows) if rows else "(no teammate history)"
 
     def show_overlay(self, duration_seconds: int = 40):
         """
-        Displays a modern team HUD (right side) for 2v2,
-        including recent teammate tables for each player.
+        Ultra-compact 2v2 HUD.
+        Top-center, horizontally expanded, thin height.
+        Uses sparklines, smurf warnings, first-played info,
+        and shows first 3 teammates per player.
         """
 
-        # Build player blocks
-        left_text = self._build_player_block(self.p1)
-        right_text = self._build_player_block(self.p2)
+        def build_compact_block(p: PlayerAnalysis) -> str:
+            s = p.summary()
+            trend_symbol = _trend_symbol(p.mmr_trend)
+            spark = _sparkline_for(p, days=7)
 
-        # Build teammates sub-tables
-        left_teammates = self._build_teammate_table(self.p1)
-        right_teammates = self._build_teammate_table(self.p2)
+            race_note = ""
+            if s["Current Race"] != s["Most Played Race"]:
+                race_note = f"(→ {s['Most Played Race']})"
 
-        # Combine final blocks
-        left_full = left_text + "\n\nTeammates:\n" + left_teammates
-        right_full = right_text + "\n\nTeammates:\n" + right_teammates
+            smurf = p.smurf_warning or ""
+            league = s.get("Max League", "") or ""
+            first_played = s.get("Playing For", "")
+
+            return "\n".join(
+                [
+                    f"{s['Player']}   {league}",
+                    f"MMR {s['Current MMR']} {trend_symbol}   {spark}",
+                    f"Race {s['Current Race']}{race_note}   {('⚠ ' + smurf) if smurf else ''}",
+                    f"{first_played}",
+                    (
+                        f"1d {s['Wins (1d)']}W/{s['Losses (1d)']}L   "
+                        f"3d {s['Wins (3d)']}W/{s['Losses (3d)']}L   "
+                        f"7d {s['Wins (7d)']}W/{s['Losses (7d)']}L   "
+                        f"30d {s['Wins (30d)']}W/{s['Losses (30d)']}L   "
+                        f"LFT {s['Lifetime Wins']}W/{s['Lifetime Losses']}L"
+                    ),
+                ]
+            )
+
+        def build_teammate_table(p: PlayerAnalysis) -> str:
+            rows = _top_teammate_rows(p, limit=3, include_games=True)
+            return "\n".join(rows)
+
+        p1_block = build_compact_block(self.p1)
+        p2_block = build_compact_block(self.p2)
+
+        p1_tm = build_teammate_table(self.p1)
+        p2_tm = build_teammate_table(self.p2)
 
         app = QApplication.instance()
-        created = False
         if not app:
             app = QApplication(sys.argv)
-            created = True
 
         overlay = QWidget()
         register_overlay(overlay)
+
         overlay.setWindowFlags(
             Qt.FramelessWindowHint
             | Qt.WindowStaysOnTopHint
@@ -573,45 +562,79 @@ class Team2V2Analysis:
         overlay.setAttribute(Qt.WA_TranslucentBackground)
         overlay.setAttribute(Qt.WA_ShowWithoutActivating)
 
-        # ------------ Layout (Vertical Stack) ------------
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(6)
 
-        style = """
+        top_row = QHBoxLayout()
+        bottom_row = QHBoxLayout()
+
+        player_style = """
             color: #FFFFFF;
             background-color: rgba(15, 15, 15, 215);
-            padding: 16px;
-            border-radius: 12px;
+            padding: 8px 14px;
+            border-radius: 10px;
             font-family: 'Segoe UI';
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
-            line-height: 160%;
-            min-width: 260px;
+            line-height: 145%;
         """
 
-        left_label = QLabel(left_full)
-        left_label.setStyleSheet(style)
+        tm_style = """
+            color: #CCCCCC;
+            background-color: rgba(10, 10, 10, 180);
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-family: 'Segoe UI';
+            font-size: 12px;
+            line-height: 140%;
+        """
 
-        right_label = QLabel(right_full)
-        right_label.setStyleSheet(style)
+        p1_label = QLabel(p1_block)
+        p2_label = QLabel(p2_block)
+        p1_label.setStyleSheet(player_style)
+        p2_label.setStyleSheet(player_style)
 
-        main_layout.addWidget(left_label)
-        main_layout.addWidget(right_label)
+        p1_tm_label = QLabel(p1_tm)
+        p2_tm_label = QLabel(p2_tm)
+        p1_tm_label.setStyleSheet(tm_style)
+        p2_tm_label.setStyleSheet(tm_style)
+
+        top_row.addWidget(p1_label, 1)
+        top_row.addSpacing(18)
+        top_row.addWidget(p2_label, 1)
+
+        bottom_row.addWidget(p1_tm_label, 1)
+        bottom_row.addSpacing(18)
+        bottom_row.addWidget(p2_tm_label, 1)
+
+        main_layout.addLayout(top_row)
+        main_layout.addLayout(bottom_row)
 
         overlay.setLayout(main_layout)
 
-        # ------------ Position HUD ON THE RIGHT SIDE ------------
         screen = app.primaryScreen().geometry()
         overlay.adjustSize()
-        overlay.move(
-            screen.width() - overlay.width() - 40,  # right-aligned
-            40,  # slight top margin
-        )
+        x = int((screen.width() - overlay.width()) / 2)
+        y = 0
+        overlay.move(x, y)
 
         overlay.show()
 
         QTimer.singleShot(duration_seconds * 1000, overlay.close)
 
-        if created:
-            app.exec()
+        for _ in range(20):
+            app.processEvents()
+
+    def pretty_print(self):
+        print("\n=========== TEAM 2v2 ANALYSIS ===========")
+        print("\n--- Player 1 ---")
+        print(self._build_player_block_for_print(self.p1))
+        print("\nTeammates:")
+        print(self._build_teammate_table_for_print(self.p1))
+
+        print("\n--- Player 2 ---")
+        print(self._build_player_block_for_print(self.p2))
+        print("\nTeammates:")
+        print(self._build_teammate_table_for_print(self.p2))
+        print("=========================================\n")

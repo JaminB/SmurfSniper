@@ -124,6 +124,22 @@ class Player(BaseModel):
     race: str
     result: str
 
+    @classmethod
+    def from_player_name(cls, player_name: str) -> "Player":
+        """
+        Convenience constructor for creating a Player model
+        from just a name string. Useful for manual lookups or CLI tools.
+        """
+        player_name = player_name.strip()
+
+        return cls(
+            id=1,  # dummy ID (SC2Pulse will not use it)
+            name=player_name,
+            type="user",
+            race="Unknown",
+            result="Undecided",
+        )
+
     def matches(self) -> List[PlayerStats]:
         url = f"https://sc2pulse.nephest.com/sc2/api/characters?query={self.name}"
 
