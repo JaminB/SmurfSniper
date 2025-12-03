@@ -1,4 +1,4 @@
-# smurf_sniper/logger.py
+# smurfsniper/logger.py
 
 import sys
 from pathlib import Path

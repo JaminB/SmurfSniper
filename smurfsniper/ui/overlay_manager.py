@@ -12,7 +12,6 @@ def close_all_overlays():
     if not app:
         return
 
-    # Close in reverse order to avoid painting glitches
     for w in reversed(OPEN_OVERLAYS):
         try:
             w.close()
@@ -21,6 +20,5 @@ def close_all_overlays():
 
     OPEN_OVERLAYS.clear()
 
-    # 🔥 IMPORTANT: Let Qt process the close events
     for _ in range(15):
         app.processEvents()

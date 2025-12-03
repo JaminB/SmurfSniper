@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List
 
-from smurf_sniper.enums import Region, TeamFormat, TeamType
+from smurfsniper.enums import Region, TeamFormat, TeamType
 
 
 def create_team_legacy_uid(

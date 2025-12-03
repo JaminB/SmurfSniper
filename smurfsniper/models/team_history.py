@@ -66,6 +66,16 @@ class TeamHistory(BaseModel):
 
     @computed_field
     @property
+    def current_rating(self) -> int:
+        return self.ratings[-1]
+
+    @computed_field
+    @property
+    def highest_rating(self) -> int:
+        return max(self.ratings)
+
+    @computed_field
+    @property
     def wins_last_day(self) -> int:
         return self._count_recent(1)["wins"]
 

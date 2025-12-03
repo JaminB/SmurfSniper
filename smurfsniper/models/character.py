@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 import httpx
 from pydantic import BaseModel, PrivateAttr
 
-from smurf_sniper.models.team import Team
+from smurfsniper.models.team import Team
 
 
 class Character(BaseModel):

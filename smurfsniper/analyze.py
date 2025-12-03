@@ -5,15 +5,13 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QEventLoop, Qt, QTimer
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
-from smurf_sniper.enums import League, RaceCode
-from smurf_sniper.models.player import Player, PlayerStats
-from smurf_sniper.overlay_manager import register_overlay
-from smurf_sniper.utils import human_friendly_duration
-
-# ---------- Shared helpers ----------
+from smurfsniper.enums import League, RaceCode
+from smurfsniper.models.player import Player, PlayerStats
+from smurfsniper.ui.overlay_manager import register_overlay
+from smurfsniper.utils import human_friendly_duration
 
 _TREND_SYMBOLS: Dict[str, str] = {
     "strong rising": "▲▲",
@@ -291,13 +289,6 @@ class PlayerAnalysis(BaseModel):
             "Frequent Teammates": partners_readable,
         }
 
-    def pretty_print(self) -> None:
-        table = self.summary()
-        print("\n=== Player Analysis ===")
-        for k, v in table.items():
-            print(f"{k:22}: {v}")
-        print("========================\n")
-
     def show_overlay(self, duration_seconds: int = 30):
         summary = self.summary()
 
@@ -389,13 +380,11 @@ class PlayerAnalysis(BaseModel):
 
         overlay.show()
 
+        loop = QEventLoop()
+        QTimer.singleShot(0, loop.quit)
+        loop.exec()
+
         QTimer.singleShot(duration_seconds * 1000, overlay.close)
-
-        for _ in range(20):
-            app.processEvents()
-
-
-# ---------- Team2V2Analysis ----------
 
 
 class Team2V2Analysis:
@@ -502,9 +491,7 @@ class Team2V2Analysis:
     def show_overlay(self, duration_seconds: int = 40):
         """
         Ultra-compact 2v2 HUD.
-        Top-center, horizontally expanded, thin height.
-        Uses sparklines, smurf warnings, first-played info,
-        and shows first 3 teammates per player.
+        Safe version for synchronous single-threaded Qt application.
         """
 
         def build_compact_block(p: PlayerAnalysis) -> str:
@@ -524,7 +511,8 @@ class Team2V2Analysis:
                 [
                     f"{s['Player']}   {league}",
                     f"MMR {s['Current MMR']} {trend_symbol}   {spark}",
-                    f"Race {s['Current Race']}{race_note}   {('⚠ ' + smurf) if smurf else ''}",
+                    f"Race {s['Current Race']}{race_note} "
+                    f"{('⚠ ' + smurf) if smurf else ''}",
                     f"{first_played}",
                     (
                         f"1d {s['Wins (1d)']}W/{s['Losses (1d)']}L   "
@@ -542,17 +530,11 @@ class Team2V2Analysis:
 
         p1_block = build_compact_block(self.p1)
         p2_block = build_compact_block(self.p2)
-
         p1_tm = build_teammate_table(self.p1)
         p2_tm = build_teammate_table(self.p2)
-
         app = QApplication.instance()
-        if not app:
-            app = QApplication(sys.argv)
-
         overlay = QWidget()
         register_overlay(overlay)
-
         overlay.setWindowFlags(
             Qt.FramelessWindowHint
             | Qt.WindowStaysOnTopHint
@@ -561,11 +543,9 @@ class Team2V2Analysis:
         )
         overlay.setAttribute(Qt.WA_TranslucentBackground)
         overlay.setAttribute(Qt.WA_ShowWithoutActivating)
-
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(6)
-
         top_row = QHBoxLayout()
         bottom_row = QHBoxLayout()
 
@@ -590,11 +570,13 @@ class Team2V2Analysis:
             line-height: 140%;
         """
 
+        # Player blocks
         p1_label = QLabel(p1_block)
         p2_label = QLabel(p2_block)
         p1_label.setStyleSheet(player_style)
         p2_label.setStyleSheet(player_style)
 
+        # Teammates
         p1_tm_label = QLabel(p1_tm)
         p2_tm_label = QLabel(p2_tm)
         p1_tm_label.setStyleSheet(tm_style)
@@ -610,7 +592,6 @@ class Team2V2Analysis:
 
         main_layout.addLayout(top_row)
         main_layout.addLayout(bottom_row)
-
         overlay.setLayout(main_layout)
 
         screen = app.primaryScreen().geometry()
@@ -622,19 +603,3 @@ class Team2V2Analysis:
         overlay.show()
 
         QTimer.singleShot(duration_seconds * 1000, overlay.close)
-
-        for _ in range(20):
-            app.processEvents()
-
-    def pretty_print(self):
-        print("\n=========== TEAM 2v2 ANALYSIS ===========")
-        print("\n--- Player 1 ---")
-        print(self._build_player_block_for_print(self.p1))
-        print("\nTeammates:")
-        print(self._build_teammate_table_for_print(self.p1))
-
-        print("\n--- Player 2 ---")
-        print(self._build_player_block_for_print(self.p2))
-        print("\nTeammates:")
-        print(self._build_teammate_table_for_print(self.p2))
-        print("=========================================\n")

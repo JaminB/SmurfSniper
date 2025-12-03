@@ -1,0 +1,22 @@
+[project]
+name = "smurfsniper"
+version = "0.1.0"
+description = "SmurfSniper watches your SC2 matches like a paranoid detective with too much free time and just enough math skills. If your opponent pings even one standard deviation into smurf territory we've already called the cops."
+authors = [
+    {name = "JaminB"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.13,<3.15"
+dependencies = [
+    "pyside6 (>=6.10.1,<7.0.0)",
+    "pydantic (>=2.12.5,<3.0.0)",
+    "loguru (>=0.7.3,<0.8.0)",
+    "httpx (>=0.28.1,<0.29.0)",
+    "pyaml (>=25.7.0,<26.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

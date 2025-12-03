@@ -4,12 +4,12 @@ from typing import Dict, List, Optional, Set
 import httpx
 from pydantic import BaseModel
 
-from smurf_sniper.enums import League, Region, TeamFormat, TeamType
-from smurf_sniper.logger import logger
-from smurf_sniper.models.character import Character
-from smurf_sniper.models.shared import CurrentStats, PreviousStats
-from smurf_sniper.models.team_history import TeamHistory, TeamHistoryPoint
-from smurf_sniper.utils import create_team_legacy_uid
+from smurfsniper.enums import League, Region, TeamFormat, TeamType
+from smurfsniper.logger import logger
+from smurfsniper.models.character import Character
+from smurfsniper.models.shared import CurrentStats, PreviousStats
+from smurfsniper.models.team_history import TeamHistory, TeamHistoryPoint
+from smurfsniper.utils import create_team_legacy_uid
 
 
 class Members(BaseModel):
@@ -33,7 +33,6 @@ class PlayerStats(BaseModel):
     currentStats: CurrentStats
     members: Members
 
-    # internal memoized cache per instance
     _match_history_cache: Optional[TeamHistory] = None
 
     @property
@@ -43,11 +42,7 @@ class PlayerStats(BaseModel):
 
     @property
     def match_history(self) -> Optional[TeamHistory]:
-        """
-        Fetch full match history across all teams, merge into a single time series,
-        dedupe timestamps, and cache for future use.
-        """
-        # --- return memoized version ---
+
         if self._match_history_cache is not None:
             return self._match_history_cache
 
