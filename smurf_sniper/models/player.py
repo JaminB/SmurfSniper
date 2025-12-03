@@ -4,12 +4,12 @@ from typing import Dict, List, Optional, Set
 import httpx
 from pydantic import BaseModel
 
-from sc_match_briefer.enums import League, Region, TeamFormat, TeamType
-from sc_match_briefer.logger import logger
-from sc_match_briefer.models.character import Character
-from sc_match_briefer.models.shared import CurrentStats, PreviousStats
-from sc_match_briefer.models.team_history import TeamHistory, TeamHistoryPoint
-from sc_match_briefer.utils import create_team_legacy_uid
+from smurf_sniper.enums import League, Region, TeamFormat, TeamType
+from smurf_sniper.logger import logger
+from smurf_sniper.models.character import Character
+from smurf_sniper.models.shared import CurrentStats, PreviousStats
+from smurf_sniper.models.team_history import TeamHistory, TeamHistoryPoint
+from smurf_sniper.utils import create_team_legacy_uid
 
 
 class Members(BaseModel):

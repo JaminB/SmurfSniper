@@ -3,11 +3,11 @@ import asyncio
 import httpx
 from sounds import two_tone_chime
 
-from sc_match_briefer.analyze import PlayerAnalysis, Team2V2Analysis
-from sc_match_briefer.logger import logger
-from sc_match_briefer.models.config import Config
-from sc_match_briefer.models.player import Player
-from sc_match_briefer.overlay_manager import close_all_overlays
+from smurf_sniper.analyze import PlayerAnalysis, Team2V2Analysis
+from smurf_sniper.logger import logger
+from smurf_sniper.models.config import Config
+from smurf_sniper.models.player import Player
+from smurf_sniper.overlay_manager import close_all_overlays
 
 CONFIG_FILE = r"C:\Users\jamin\PycharmProjects\sc2-match-briefer\config.yaml"
 URL = "http://localhost:6119/game"

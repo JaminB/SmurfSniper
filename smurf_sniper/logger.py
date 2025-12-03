@@ -1,4 +1,4 @@
-# sc_match_briefer/logger.py
+# smurf_sniper/logger.py
 
 import sys
 from pathlib import Path

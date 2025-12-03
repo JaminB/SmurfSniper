@@ -8,10 +8,10 @@ from pydantic import BaseModel
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
-from sc_match_briefer.enums import League, RaceCode
-from sc_match_briefer.models.player import Player, PlayerStats
-from sc_match_briefer.overlay_manager import register_overlay
-from sc_match_briefer.utils import human_friendly_duration
+from smurf_sniper.enums import League, RaceCode
+from smurf_sniper.models.player import Player, PlayerStats
+from smurf_sniper.overlay_manager import register_overlay
+from smurf_sniper.utils import human_friendly_duration
 
 # ---------- Shared helpers ----------
 
