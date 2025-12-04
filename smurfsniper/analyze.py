@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-import sys
 from datetime import datetime
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel
-from PySide6.QtCore import QEventLoop, Qt, QTimer
-from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from smurfsniper.enums import League, RaceCode
 from smurfsniper.models.player import Player, PlayerStats
-from smurfsniper.ui.overlay_manager import register_overlay
+from smurfsniper.ui.overlays import Overlay
 from smurfsniper.utils import human_friendly_duration
 
 _TREND_SYMBOLS: Dict[str, str] = {
@@ -291,100 +288,44 @@ class PlayerAnalysis(BaseModel):
 
     def show_overlay(self, duration_seconds: int = 30):
         summary = self.summary()
-
-        trend_symbol = _trend_symbol(self.mmr_trend)
+        trend = _trend_symbol(self.mmr_trend)
         spark = _sparkline_for(self, days=7)
 
-        primary_race = summary["Most Played Race"]
-        current_race = summary["Current Race"]
-        race_note = ""
-        if current_race and primary_race and current_race != primary_race:
-            race_note = f" (→ {primary_race})"
+        current = summary["Current Race"]
+        primary = summary["Most Played Race"]
+        race_note = f" (→ {primary})" if current != primary else ""
 
-        smurf_note = self.smurf_warning or ""
+        smurf = f"⚠ {self.smurf_warning}" if self.smurf_warning else ""
 
-        top_lines = [
-            f"{summary['Player']} | {summary['Max League']}",
-            f"MMR {summary['Current MMR']} {trend_symbol}    {spark}",
-            f"Race: {current_race}{race_note}",
-            f"First Played: {summary['Playing For']}",
-        ]
-        if smurf_note:
-            top_lines.append(f"⚠ {smurf_note}")
-        top_block = "\n".join(top_lines)
+        top_block = "\n".join(
+            [
+                f"{summary['Player']} | {summary['Max League']}",
+                f"MMR {summary['Current MMR']} {trend}    {spark}",
+                f"Race: {current}{race_note}",
+                f"First Played: {summary['Playing For']}",
+                smurf,
+            ]
+        )
 
         perf_block = (
             f"1d {summary['Wins (1d)']}W/{summary['Losses (1d)']}L   "
             f"3d {summary['Wins (3d)']}W/{summary['Losses (3d)']}L\n"
             f"7d {summary['Wins (7d)']}W/{summary['Losses (7d)']}L   "
             f"30d {summary['Wins (30d)']}W/{summary['Losses (30d)']}L\n"
-            f"LFT {summary['Lifetime Wins']}W/{summary['Lifetime Losses']}L\n"
+            f"LFT {summary['Lifetime Wins']}W/{summary['Lifetime Losses']}L"
         )
 
-        tm_rows = _top_teammate_rows(self, limit=3, include_games=False)
-        teammates_text = "\n".join(tm_rows)
+        teammates = "\n".join(_top_teammate_rows(self, limit=3, include_games=False))
 
-        app = QApplication.instance()
-        if not app:
-            app = QApplication(sys.argv)
+        ov = Overlay(duration_seconds)
 
-        overlay = QWidget()
-        register_overlay(overlay)
-
-        overlay.setWindowFlags(
-            Qt.FramelessWindowHint
-            | Qt.WindowStaysOnTopHint
-            | Qt.Tool
-            | Qt.WindowTransparentForInput
+        ov.add_row(
+            [top_block, perf_block, teammates],
+            style=Overlay.PLAYER_STYLE,
+            spacing=12,
         )
-        overlay.setAttribute(Qt.WA_TranslucentBackground)
-        overlay.setAttribute(Qt.WA_ShowWithoutActivating)
 
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(6)
-
-        row_layout = QHBoxLayout()
-        row_layout.setSpacing(12)
-
-        style = """
-            color: #FFFFFF;
-            background-color: rgba(15, 15, 15, 215);
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-family: 'Segoe UI';
-            font-size: 13px;
-            font-weight: 500;
-            line-height: 150%;
-        """
-
-        left_label = QLabel(top_block)
-        mid_label = QLabel(perf_block)
-        right_label = QLabel(teammates_text)
-
-        for lbl in (left_label, mid_label, right_label):
-            lbl.setStyleSheet(style)
-
-        row_layout.addWidget(left_label)
-        row_layout.addWidget(mid_label)
-        row_layout.addWidget(right_label)
-
-        main_layout.addLayout(row_layout)
-        overlay.setLayout(main_layout)
-
-        screen = app.primaryScreen().geometry()
-        overlay.adjustSize()
-        x = int((screen.width() - overlay.width()) / 2)
-        y = 0
-        overlay.move(x, y)
-
-        overlay.show()
-
-        loop = QEventLoop()
-        QTimer.singleShot(0, loop.quit)
-        loop.exec()
-
-        QTimer.singleShot(duration_seconds * 1000, overlay.close)
+        ov.show()
 
 
 class Team2V2Analysis:
@@ -491,115 +432,60 @@ class Team2V2Analysis:
     def show_overlay(self, duration_seconds: int = 40):
         """
         Ultra-compact 2v2 HUD.
-        Safe version for synchronous single-threaded Qt application.
         """
 
         def build_compact_block(p: PlayerAnalysis) -> str:
             s = p.summary()
-            trend_symbol = _trend_symbol(p.mmr_trend)
+            trend = _trend_symbol(p.mmr_trend)
             spark = _sparkline_for(p, days=7)
 
             race_note = ""
             if s["Current Race"] != s["Most Played Race"]:
                 race_note = f"(→ {s['Most Played Race']})"
 
-            smurf = p.smurf_warning or ""
-            league = s.get("Max League", "") or ""
+            smurf = f"⚠ {p.smurf_warning}" if p.smurf_warning else ""
+            league = s.get("Max League", "")
             first_played = s.get("Playing For", "")
+
+            perf = (
+                f"1d {s['Wins (1d)']}W/{s['Losses (1d)']}L   "
+                f"3d {s['Wins (3d)']}W/{s['Losses (3d)']}L   "
+                f"7d {s['Wins (7d)']}W/{s['Losses (7d)']}L   "
+                f"30d {s['Wins (30d)']}W/{s['Losses (30d)']}L   "
+                f"LFT {s['Lifetime Wins']}W/{s['Lifetime Losses']}L"
+            )
 
             return "\n".join(
                 [
                     f"{s['Player']}   {league}",
-                    f"MMR {s['Current MMR']} {trend_symbol}   {spark}",
-                    f"Race {s['Current Race']}{race_note} "
-                    f"{('⚠ ' + smurf) if smurf else ''}",
-                    f"{first_played}",
-                    (
-                        f"1d {s['Wins (1d)']}W/{s['Losses (1d)']}L   "
-                        f"3d {s['Wins (3d)']}W/{s['Losses (3d)']}L   "
-                        f"7d {s['Wins (7d)']}W/{s['Losses (7d)']}L   "
-                        f"30d {s['Wins (30d)']}W/{s['Losses (30d)']}L   "
-                        f"LFT {s['Lifetime Wins']}W/{s['Lifetime Losses']}L"
-                    ),
+                    f"MMR {s['Current MMR']} {trend}   {spark}",
+                    f"Race {s['Current Race']}{race_note} {smurf}",
+                    first_played,
+                    perf,
                 ]
             )
 
-        def build_teammate_table(p: PlayerAnalysis) -> str:
-            rows = _top_teammate_rows(p, limit=3, include_games=True)
-            return "\n".join(rows)
+        def build_teammates(p: PlayerAnalysis) -> str:
+            return "\n".join(_top_teammate_rows(p, limit=3, include_games=True))
 
-        p1_block = build_compact_block(self.p1)
-        p2_block = build_compact_block(self.p2)
-        p1_tm = build_teammate_table(self.p1)
-        p2_tm = build_teammate_table(self.p2)
-        app = QApplication.instance()
-        overlay = QWidget()
-        register_overlay(overlay)
-        overlay.setWindowFlags(
-            Qt.FramelessWindowHint
-            | Qt.WindowStaysOnTopHint
-            | Qt.Tool
-            | Qt.WindowTransparentForInput
+        ov = Overlay(duration_seconds)
+
+        # Player row
+        ov.add_row(
+            [
+                build_compact_block(self.p1),
+                build_compact_block(self.p2),
+            ],
+            style=Overlay.PLAYER_STYLE,
         )
-        overlay.setAttribute(Qt.WA_TranslucentBackground)
-        overlay.setAttribute(Qt.WA_ShowWithoutActivating)
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(6)
-        top_row = QHBoxLayout()
-        bottom_row = QHBoxLayout()
 
-        player_style = """
-            color: #FFFFFF;
-            background-color: rgba(15, 15, 15, 215);
-            padding: 8px 14px;
-            border-radius: 10px;
-            font-family: 'Segoe UI';
-            font-size: 13px;
-            font-weight: 500;
-            line-height: 145%;
-        """
+        # Teammates row
+        ov.add_row(
+            [
+                build_teammates(self.p1),
+                build_teammates(self.p2),
+            ],
+            style=Overlay.TM_STYLE,
+        )
 
-        tm_style = """
-            color: #CCCCCC;
-            background-color: rgba(10, 10, 10, 180);
-            padding: 6px 10px;
-            border-radius: 8px;
-            font-family: 'Segoe UI';
-            font-size: 12px;
-            line-height: 140%;
-        """
-
-        # Player blocks
-        p1_label = QLabel(p1_block)
-        p2_label = QLabel(p2_block)
-        p1_label.setStyleSheet(player_style)
-        p2_label.setStyleSheet(player_style)
-
-        # Teammates
-        p1_tm_label = QLabel(p1_tm)
-        p2_tm_label = QLabel(p2_tm)
-        p1_tm_label.setStyleSheet(tm_style)
-        p2_tm_label.setStyleSheet(tm_style)
-
-        top_row.addWidget(p1_label, 1)
-        top_row.addSpacing(18)
-        top_row.addWidget(p2_label, 1)
-
-        bottom_row.addWidget(p1_tm_label, 1)
-        bottom_row.addSpacing(18)
-        bottom_row.addWidget(p2_tm_label, 1)
-
-        main_layout.addLayout(top_row)
-        main_layout.addLayout(bottom_row)
-        overlay.setLayout(main_layout)
-
-        screen = app.primaryScreen().geometry()
-        overlay.adjustSize()
-        x = int((screen.width() - overlay.width()) / 2)
-        y = 0
-        overlay.move(x, y)
-
-        overlay.show()
-
-        QTimer.singleShot(duration_seconds * 1000, overlay.close)
+        ov.show()

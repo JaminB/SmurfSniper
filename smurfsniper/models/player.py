@@ -138,7 +138,7 @@ class Player(BaseModel):
     def matches(self) -> List[PlayerStats]:
         url = f"https://sc2pulse.nephest.com/sc2/api/characters?query={self.name}"
 
-        with httpx.Client(timeout=10.0) as client:
+        with httpx.Client(timeout=25.0) as client:
             r = client.get(url)
             r.raise_for_status()
             data = r.json()

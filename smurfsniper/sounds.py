@@ -24,6 +24,26 @@ def write_tone(wav: wave.Wave_write, freq: float, duration: float, volume: float
         wav.writeframes(struct.pack("<h", sample))
 
 
+def one_tone_chime():
+    """A single pleasant beep to indicate beginning a query."""
+    temp_dir = Path(tempfile.gettempdir())
+    wav_path = temp_dir / "one_beep_chime.wav"
+
+    if wav_path.exists():
+        wav_path.unlink()
+
+    freq = 740.0  # pleasant mid-high chime
+    duration = 0.18  # short crisp confirmation beep
+
+    with wave.open(str(wav_path), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(44100)
+        write_tone(wav, freq, duration, volume=0.38)
+
+    winsound.PlaySound(str(wav_path), winsound.SND_FILENAME)
+
+
 def two_tone_chime():
     temp_dir = Path(tempfile.gettempdir())
     wav_path = temp_dir / "two_tone_chime.wav"
