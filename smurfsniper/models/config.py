@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Me(BaseModel):
@@ -16,29 +16,29 @@ class Team(BaseModel):
     members: List[str]
 
     def __contains__(self, item: str) -> bool:
-        """Allows:  if player.name in config.team"""
         return item in self.members
 
 
-# -------------------- Preferences -------------------- #
-
-
 class OverlayPreferences(BaseModel):
-    seconds_visible: int
+    visible: bool = True
+    orientation: str = "horizontal"
+    position: str = "top_center"
+    seconds_delay_before_show: float = 0.0
+    seconds_visible: int = 30
 
 
 class Preferences(BaseModel):
     overlay_1v1: OverlayPreferences
     overlay_2v2: OverlayPreferences
+    overlay_team: OverlayPreferences
 
     @classmethod
     def from_yaml(cls, data: dict) -> "Preferences":
-        """Handle keys the user writes (1v1_overlay) -> model fields (overlay_1v1)."""
         return cls(
             overlay_1v1=OverlayPreferences(**data["1v1_overlay"]),
             overlay_2v2=OverlayPreferences(**data["2v2_overlay"]),
+            overlay_team=OverlayPreferences(**data["team_overlay"]),
         )
-
 
 class Config(BaseModel):
     me: Me

@@ -1,6 +1,5 @@
 from PySide6.QtCore import QEventLoop, Qt, QTimer
-from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from smurfsniper.ui.overlay_manager import register_overlay
 
@@ -27,10 +26,11 @@ class Overlay(QWidget):
         line-height: 140%;
     """
 
-    def __init__(self, duration_seconds: int = 40, parent=None):
+    def __init__(self, duration_seconds: int = 40, position: str = "top_center", parent=None):
         super().__init__(parent)
 
         self.duration_seconds = duration_seconds
+        self.position = position
 
         app = QApplication.instance()
         if not app:
@@ -46,6 +46,7 @@ class Overlay(QWidget):
         )
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
+
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(10, 10, 10, 10)
         self.main_layout.setSpacing(6)
@@ -62,21 +63,39 @@ class Overlay(QWidget):
 
         self.main_layout.addLayout(row)
 
-    def show(self):
-        """Show top-centered and schedule auto-close."""
-        super().show()
-
-        # Position top-center
+    def _position_overlay(self):
         screen = QApplication.primaryScreen().geometry()
         self.adjustSize()
-        x = int((screen.width() - self.width()) / 2)
-        y = 0
+
+        sw, sh = screen.width(), screen.height()
+        w, h = self.width(), self.height()
+
+        pos = self.position.lower()
+
+        if pos == "top_left":
+            x, y = 20, 20
+        elif pos == "top_right":
+            x, y = sw - w - 20, 20
+        elif pos == "bottom_left":
+            x, y = 20, sh - h - 20
+        elif pos == "bottom_right":
+            x, y = sw - w - 20, sh - h - 20
+        elif pos == "bottom_center":
+            x, y = (sw - w) // 2, sh - h - 20
+        elif pos == "center":
+            x, y = (sw - w) // 2, (sh - h) // 2
+        else:  # default = top_center
+            x, y = (sw - w) // 2, 20
+
         self.move(x, y)
 
-        # Force layout + paint before returning
+    def show(self):
+        super().show()
+
+        self._position_overlay()
+
         loop = QEventLoop()
         QTimer.singleShot(0, loop.quit)
         loop.exec()
 
-        # Auto-close
         QTimer.singleShot(self.duration_seconds * 1000, self.close)

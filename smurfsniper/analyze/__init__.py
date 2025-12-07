@@ -9,6 +9,15 @@ TREND_SYMBOLS: dict[str, str] = {
     "unknown": "?",
 }
 
+POSITION_MAP = {
+    "center": "center",
+    "top_left": "top_left",
+    "top_right": "top_right",
+    "bottom_left": "bottom_left",
+    "bottom_right": "bottom_right",
+}
+
+
 
 class BaseAnalysis:
     @property
@@ -111,10 +120,11 @@ class BaseAnalysis:
     def losses_lifetime(self):
         return self.match_history.losses_lifetime
 
-    def show_overlay(self, duration_seconds: int = 30):
+    def _resolve_overlay_layout(self, orientation: str):
+        """Returns layout blocks based on user-configured orientation."""
         summary = self.summary()
-        top_block = "\n".join(self._overlay_top_details(summary))
 
+        top_block = "\n".join(self._overlay_top_details(summary))
         perf_block = (
             f"1d {summary['Wins (1d)']}W/{summary['Losses (1d)']}L   "
             f"3d {summary['Wins (3d)']}W/{summary['Losses (3d)']}L\n"
@@ -122,13 +132,22 @@ class BaseAnalysis:
             f"30d {summary['Wins (30d)']}W/{summary['Losses (30d)']}L\n"
             f"LFT {summary['Lifetime Wins']}W/{summary['Lifetime Losses']}L"
         )
+        side_block = self._overlay_side_panel(summary)
 
-        side_panel = self._overlay_side_panel(summary)
+        if orientation == "vertical":
+            # stacked layout
+            return [[top_block], [perf_block], [side_block]]
 
+        # default horizontal
+        return [[top_block, perf_block, side_block]]
+
+    def show_overlay(self, duration_seconds: int = 30, position: str = "top_center", orientation: str = "vertical"):
+        rows = self._resolve_overlay_layout(orientation)
         ov = Overlay(duration_seconds)
-        ov.add_row(
-            [top_block, perf_block, side_panel],
-            style=Overlay.PLAYER_STYLE,
-            spacing=12,
-        )
+        ov.position = position
+        for row in rows:
+            ov.add_row(row, style=Overlay.PLAYER_STYLE, spacing=12)
+
         ov.show()
+
+

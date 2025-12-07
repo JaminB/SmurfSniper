@@ -226,7 +226,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         ]
 
     def _overlay_side_panel(self, summary: dict) -> str:
-        return "\n".join(_top_teammate_rows(self, limit=3, include_games=False))
+        return "\n".join(_top_teammate_rows(self, limit=3, include_games=True))
 
     def overlay_block(self) -> str:
         """Compact HUD block showing league, MMR, race, smurf warning."""
@@ -320,24 +320,36 @@ class Player2v2Analysis:
             },
         }
 
-    def show_overlay(self, duration_seconds: int = 40):
-        ov = Overlay(duration_seconds)
-
-        ov.add_row(
-            [
-                self.p1.overlay_block(),  # NEW: method from BaseAnalysis integration
-                self.p2.overlay_block(),
-            ],
-            style=Overlay.PLAYER_STYLE,
+    def show_overlay(
+            self,
+            duration_seconds: int = 30,
+            position: str = "top_center",
+            orientation: str = "vertical",
+    ):
+        ov = Overlay(
+            duration_seconds=duration_seconds,
+            position=position,
         )
 
-        # teammates below
-        ov.add_row(
-            [
-                self.p1.overlay_teammates_block(),
-                self.p2.overlay_teammates_block(),
-            ],
-            style=Overlay.TM_STYLE,
-        )
+        p1_main = self.p1.overlay_block()
+        p2_main = self.p2.overlay_block()
+        p1_tm = self.p1.overlay_teammates_block()
+        p2_tm = self.p2.overlay_teammates_block()
+
+        if orientation == "horizontal":
+            ov.add_row(
+                [p1_main, p2_main],
+                style=Overlay.PLAYER_STYLE,
+            )
+            ov.add_row(
+                [p1_tm, p2_tm],
+                style=Overlay.TM_STYLE,
+            )
+        else:
+            ov.add_row([p1_main], style=Overlay.PLAYER_STYLE)
+            ov.add_row([p2_main], style=Overlay.PLAYER_STYLE)
+            ov.add_row([p1_tm], style=Overlay.TM_STYLE)
+            ov.add_row([p2_tm], style=Overlay.TM_STYLE)
 
         ov.show()
+

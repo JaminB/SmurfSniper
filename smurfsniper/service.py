@@ -2,6 +2,8 @@ import keyboard
 import requests
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
+
+from smurfsniper.analyze.teams import TeamAnalysis, NoTeamFound
 from sounds import one_tone_chime, two_tone_chime
 
 from smurfsniper.analyze.players import Player2v2Analysis, PlayerAnalysis
@@ -19,7 +21,8 @@ class GamePoller:
         self.previous_state = None
         self.mode = TeamFormat._1V1
         self.player_analysis = None
-        self.team_2v2_analysis = None
+        self.player_2v2_analysis = None
+        self.team_analysis = None
 
     def poll_once(self):
         try:
@@ -61,10 +64,6 @@ class GamePoller:
         if not opp_team:
             return
 
-        # Only support 1v1 and 2v2 for now
-        if len(opp_team) > 2:
-            opp_team = opp_team[:2]
-
         # ---- 2v2 ----
         if len(opp_team) == 2:
             self.mode = TeamFormat._2V2
@@ -73,27 +72,62 @@ class GamePoller:
             opp1 = Player(**p1_raw)
             opp2 = Player(**p2_raw)
 
+            opp1_stats = opp1.get_player_stats(min_mmr=self.config.me.mmr - 500, max_mmr=self.config.me.mmr + 500)
+            opp2_stats = opp2.get_player_stats(min_mmr=self.config.me.mmr - 500, max_mmr=self.config.me.mmr + 500)
+
             ps1 = PlayerAnalysis.from_player_stats(
-                opp1.get_player_stats(
-                    min_mmr=self.config.me.mmr - 500, max_mmr=self.config.me.mmr + 500
-                ),
+                player_stats=opp1_stats,
                 player=opp1,
             )
             ps2 = PlayerAnalysis.from_player_stats(
-                opp2.get_player_stats(
-                    min_mmr=self.config.me.mmr - 500, max_mmr=self.config.me.mmr + 500
-                ),
+                player_stats=opp2_stats,
                 player=opp2,
             )
 
             logger.info(f"Detected 2v2 opponents: {opp1.name}, {opp2.name}")
             two_tone_chime()
-
-            hud = Player2v2Analysis(ps1, ps2)
-            self.team_2v2_analysis = hud
-            hud.show_overlay(
-                duration_seconds=self.config.preferences.overlay_2v2.seconds_visible
+            player2v2analysis = Player2v2Analysis(ps1, ps2)
+            logger.info(player2v2analysis.summary())
+            self.player_2v2_analysis = player2v2analysis
+            player2v2analysis.show_overlay(
+                duration_seconds=self.config.preferences.overlay_2v2.seconds_visible,
+                orientation=self.config.preferences.overlay_2v2.orientation,
+                position=self.config.preferences.overlay_2v2.position,
             )
+            try:
+                team_analysis = TeamAnalysis.from_players_stats(
+                    player_stats=[opp1_stats, opp2_stats],
+                )
+                self.team_analysis = team_analysis
+                team_analysis.show_overlay(
+                    duration_seconds=self.config.preferences.overlay_2v2.seconds_visible,
+                    orientation=self.config.preferences.overlay_team.orientation,
+                    position=self.config.preferences.overlay_team.position,
+                )
+            except NoTeamFound:
+                logger.warning(f"No team found for {opp1.name}, {opp2.name}")
+            return
+
+        elif len(opp_team) > 2:
+            if len(opp_team) == 3:
+                self.mode = TeamFormat._3V3
+            else:
+                self.mode = TeamFormat._4V4
+            opp_players = []
+            for player in opp_team:
+                opp_players.append(player.get_player_stats(min_mmr=self.config.me.mmr - 500, max_mmr=self.config.me.mmr))
+            try:
+                team_analysis = TeamAnalysis.from_players_stats(
+                    player_stats=opp_players,
+                )
+                self.team_analysis = team_analysis
+                team_analysis.show_overlay(
+                    duration_seconds=self.config.preferences.overlay_2v2.seconds_visible,
+                    orientation=self.config.preferences.overlay_team.orientation,
+                    position=self.config.preferences.overlay_team.position,
+                )
+            except NoTeamFound:
+                logger.warning(f"No team found for {opp_players}")
             return
 
         # ---- 1v1 ----
@@ -104,13 +138,15 @@ class GamePoller:
             min_mmr=self.config.me.mmr - 500,
             max_mmr=self.config.me.mmr + 500,
         )
-        analysis = PlayerAnalysis.from_player_stats(stats, player=opp_obj)
-        self.player_analysis = analysis
+        player1v1analysis = PlayerAnalysis.from_player_stats(stats, player=opp_obj)
+        self.player_analysis = player1v1analysis
         logger.info(f"Detected 1v1 opponent: {opp_obj.name}")
         two_tone_chime()
-
-        analysis.show_overlay(
-            duration_seconds=self.config.preferences.overlay_1v1.seconds_visible
+        logger.info(self.player_analysis.summary())
+        player1v1analysis.show_overlay(
+            duration_seconds=self.config.preferences.overlay_1v1.seconds_visible,
+            orientation=self.config.preferences.overlay_1v1.orientation,
+            position=self.config.preferences.overlay_1v1.position
         )
 
 
