@@ -40,6 +40,7 @@ class Preferences(BaseModel):
             overlay_team=OverlayPreferences(**data["team_overlay"]),
         )
 
+
 class Config(BaseModel):
     me: Me
     team: Team

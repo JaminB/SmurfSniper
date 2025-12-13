@@ -32,8 +32,8 @@ def one_tone_chime():
     if wav_path.exists():
         wav_path.unlink()
 
-    freq = 740.0  # pleasant mid-high chime
-    duration = 0.18  # short crisp confirmation beep
+    freq = 740.0
+    duration = 0.18
 
     with wave.open(str(wav_path), "wb") as wav:
         wav.setnchannels(1)
@@ -51,9 +51,8 @@ def two_tone_chime():
     if wav_path.exists():
         wav_path.unlink()
 
-    # Two pleasant tones
     tone1 = 660.0  # soft chime A#
-    tone2 = 880.0  # harmonic pleasant overtone
+    tone2 = 880.0
 
     duration1 = 0.20
     duration2 = 0.20

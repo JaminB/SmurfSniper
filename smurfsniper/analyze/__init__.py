@@ -20,7 +20,6 @@ POSITION_MAP = {
 }
 
 
-
 class BaseAnalysis:
     @property
     def match_history(self):
@@ -144,11 +143,11 @@ class BaseAnalysis:
         return [[top_block, perf_block, side_block]]
 
     def show_overlay(
-            self,
-            duration_seconds: int = 30,
-            position: str = "top_center",
-            orientation: str = "vertical",
-            delay_seconds: float = 0.0,
+        self,
+        duration_seconds: int = 30,
+        position: str = "top_center",
+        orientation: str = "vertical",
+        delay_seconds: float = 0.0,
     ):
         rows = self._resolve_overlay_layout(orientation)
 
@@ -167,6 +166,3 @@ class BaseAnalysis:
 
         delay_ms = int(delay_seconds * 1000)
         QTimer.singleShot(delay_ms, delayed_show)
-
-
-

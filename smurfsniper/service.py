@@ -2,20 +2,21 @@ import keyboard
 import requests
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
-
-from smurfsniper.analyze.teams import TeamAnalysis, NoTeamFound
 from sounds import one_tone_chime, two_tone_chime
 
 from smurfsniper.analyze.players import Player2v2Analysis, PlayerAnalysis
+from smurfsniper.analyze.teams import NoTeamFound, TeamAnalysis
 from smurfsniper.enums import TeamFormat
 from smurfsniper.logger import logger
 from smurfsniper.models.config import Config
 from smurfsniper.models.player import Player
+from smurfsniper.player_log import PlayerLog, init_player_log_db
 from smurfsniper.ui.overlay_manager import close_all_overlays
 
 
 class GamePoller:
     def __init__(self, url: str, config_path: str):
+        init_player_log_db()
         self.url = url
         self.config = Config.from_config_file(config_path)
         self.previous_state = None
@@ -37,26 +38,57 @@ class GamePoller:
         if not players:
             return
 
-        if any(p.get("result") in ["Victory", "Defeat"] for p in players):
-            close_all_overlays()
+        results = {"Victory", "Defeat", "Tie"}
+
+        if any(p.get("result") in results for p in players):
             logger.info("Game ended, waiting for next lobby…")
+            close_all_overlays()
+
+            me = self.config.me
+            teammates = set(self.config.team.members)
+
+            mmr_min = me.mmr - 500
+            mmr_max = me.mmr + 500
+
+            last_log = PlayerLog.most_recent()
+
+            for p in players:
+                name = p.get("name")
+                if name == me or name in teammates:
+                    continue
+
+                player = Player(**p)
+                player_stats = player.get_player_stats(
+                    min_mmr=mmr_min,
+                    max_mmr=mmr_max,
+                )
+
+                log = PlayerLog.from_player_stats(
+                    player_stats,
+                    match_status=p.get("result").lower(),
+                )
+
+                if not last_log or last_log.battlenet_id != log.battlenet_id:
+                    log.save()
+
             return
 
         current_state = tuple((p.get("name"), p.get("race")) for p in players)
 
         if current_state == self.previous_state:
             return
-
         self.previous_state = current_state
         close_all_overlays()
         logger.info(f"New game detected: {current_state}")
 
-        my_name = self.config.me.name
         my_team = []
         opp_team = []
 
         for p in players:
-            if p.get("name") == my_name or p.get("name") in self.config.team.members:
+            if (
+                p.get("name") == self.config.me
+                or p.get("name") in self.config.team.members
+            ):
                 my_team.append(p)
             else:
                 opp_team.append(p)
@@ -72,8 +104,12 @@ class GamePoller:
             opp1 = Player(**p1_raw)
             opp2 = Player(**p2_raw)
 
-            opp1_stats = opp1.get_player_stats(min_mmr=self.config.me.mmr - 500, max_mmr=self.config.me.mmr + 500)
-            opp2_stats = opp2.get_player_stats(min_mmr=self.config.me.mmr - 500, max_mmr=self.config.me.mmr + 500)
+            opp1_stats = opp1.get_player_stats(
+                min_mmr=self.config.me.mmr - 500, max_mmr=self.config.me.mmr + 500
+            )
+            opp2_stats = opp2.get_player_stats(
+                min_mmr=self.config.me.mmr - 500, max_mmr=self.config.me.mmr + 500
+            )
 
             ps1 = PlayerAnalysis.from_player_stats(
                 player_stats=opp1_stats,
@@ -117,13 +153,23 @@ class GamePoller:
                 self.mode = TeamFormat._4V4
             opp_players = []
             for player in opp_team:
-                opp_players.append(player.get_player_stats(min_mmr=self.config.me.mmr - 500, max_mmr=self.config.me.mmr))
+                opp_players.append(
+                    player.get_player_stats(
+                        min_mmr=self.config.me.mmr - 500, max_mmr=self.config.me.mmr
+                    )
+                )
             try:
                 team_analysis = TeamAnalysis.from_players_stats(
                     player_stats=opp_players,
                 )
-                logger.info(list(zip(team_analysis.match_history.timestamps,
-                         team_analysis.match_history.ratings)))
+                logger.info(
+                    list(
+                        zip(
+                            team_analysis.match_history.timestamps,
+                            team_analysis.match_history.ratings,
+                        )
+                    )
+                )
 
                 self.team_analysis = team_analysis
                 team_analysis.show_overlay(
@@ -166,7 +212,6 @@ if __name__ == "__main__":
 
     poller = GamePoller(URL, CONFIG_FILE)
 
-    # FIXED: real function instead of lambda
     def on_ctrl_f1():
         one_tone_chime()
         poller.previous_state = "{}"

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QTimer
 from pydantic import BaseModel
+from PySide6.QtCore import QTimer
 
 from smurfsniper.analyze import BaseAnalysis
 from smurfsniper.models.player import Player, PlayerStats
@@ -9,9 +9,12 @@ from smurfsniper.models.team import Team
 from smurfsniper.ui.overlays import Overlay
 from smurfsniper.utils import human_friendly_duration
 
+
 class NoTeamFound(Exception):
     """Raised when no matching team could be constructed for the given players."""
+
     pass
+
 
 class TeamAnalysis(BaseAnalysis, BaseModel):
     team: Team
@@ -132,11 +135,11 @@ class TeamAnalysis(BaseAnalysis, BaseModel):
         }
 
     def show_overlay(
-            self,
-            duration_seconds: int = 30,
-            position: str = "top_center",
-            orientation: str = "vertical",
-            delay_seconds: float = 0.0,
+        self,
+        duration_seconds: int = 30,
+        position: str = "top_center",
+        orientation: str = "vertical",
+        delay_seconds: float = 0.0,
     ):
         summary = self.summary()
 

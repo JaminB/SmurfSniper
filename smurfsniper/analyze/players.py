@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from PySide6.QtCore import QTimer
 from pydantic import BaseModel
+from PySide6.QtCore import QTimer
 
 from smurfsniper.analyze import BaseAnalysis
 from smurfsniper.enums import League, RaceCode
@@ -322,11 +322,11 @@ class Player2v2Analysis:
         }
 
     def show_overlay(
-            self,
-            duration_seconds: int = 30,
-            position: str = "top_center",
-            orientation: str = "vertical",
-            delay_seconds: float = 0.0,
+        self,
+        duration_seconds: int = 30,
+        position: str = "top_center",
+        orientation: str = "vertical",
+        delay_seconds: float = 0.0,
     ):
         ov = Overlay(
             duration_seconds=duration_seconds,
@@ -358,4 +358,3 @@ class Player2v2Analysis:
 
         delay_ms = int(delay_seconds * 1000)
         QTimer.singleShot(delay_ms, delayed_show)
-
