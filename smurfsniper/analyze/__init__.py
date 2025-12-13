@@ -1,3 +1,5 @@
+from PySide6.QtCore import QTimer
+
 from smurfsniper.ui.overlays import Overlay
 
 TREND_SYMBOLS: dict[str, str] = {
@@ -141,13 +143,30 @@ class BaseAnalysis:
         # default horizontal
         return [[top_block, perf_block, side_block]]
 
-    def show_overlay(self, duration_seconds: int = 30, position: str = "top_center", orientation: str = "vertical"):
+    def show_overlay(
+            self,
+            duration_seconds: int = 30,
+            position: str = "top_center",
+            orientation: str = "vertical",
+            delay_seconds: float = 0.0,
+    ):
         rows = self._resolve_overlay_layout(orientation)
+
         ov = Overlay(duration_seconds)
         ov.position = position
+
         for row in rows:
             ov.add_row(row, style=Overlay.PLAYER_STYLE, spacing=12)
 
-        ov.show()
+        if delay_seconds <= 0:
+            ov.show()
+            return
+
+        def delayed_show():
+            ov.show()
+
+        delay_ms = int(delay_seconds * 1000)
+        QTimer.singleShot(delay_ms, delayed_show)
+
 
 

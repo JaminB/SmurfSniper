@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from PySide6.QtCore import QTimer
 from pydantic import BaseModel
 
 from smurfsniper.analyze import BaseAnalysis
@@ -131,10 +132,11 @@ class TeamAnalysis(BaseAnalysis, BaseModel):
         }
 
     def show_overlay(
-        self,
-        duration_seconds: int = 30,
-        position: str = "top_center",
-        orientation: str = "vertical",
+            self,
+            duration_seconds: int = 30,
+            position: str = "top_center",
+            orientation: str = "vertical",
+            delay_seconds: float = 0.0,
     ):
         summary = self.summary()
 
@@ -152,7 +154,7 @@ class TeamAnalysis(BaseAnalysis, BaseModel):
 
         ov = Overlay(
             duration_seconds=duration_seconds,
-            position=position,      # Overlay handles position mapping
+            position=position,
         )
 
         if orientation == "horizontal":
@@ -161,10 +163,18 @@ class TeamAnalysis(BaseAnalysis, BaseModel):
                 style=Overlay.PLAYER_STYLE,
                 spacing=12,
             )
-
-        else:  # vertical orientation
+        else:
             ov.add_row([top_block], style=Overlay.PLAYER_STYLE)
             ov.add_row([perf_block], style=Overlay.PLAYER_STYLE)
             ov.add_row([side_block], style=Overlay.PLAYER_STYLE)
 
-        ov.show()
+        if delay_seconds <= 0:
+            ov.show()
+            return
+
+        # Delay the overlay via Qt timer
+        def delayed_show():
+            ov.show()
+
+        delay_ms = int(delay_seconds * 1000)
+        QTimer.singleShot(delay_ms, delayed_show)

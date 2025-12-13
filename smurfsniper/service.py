@@ -93,6 +93,7 @@ class GamePoller:
                 duration_seconds=self.config.preferences.overlay_2v2.seconds_visible,
                 orientation=self.config.preferences.overlay_2v2.orientation,
                 position=self.config.preferences.overlay_2v2.position,
+                delay_seconds=self.config.preferences.overlay_2v2.seconds_delay_before_show,
             )
             try:
                 team_analysis = TeamAnalysis.from_players_stats(
@@ -103,6 +104,7 @@ class GamePoller:
                     duration_seconds=self.config.preferences.overlay_2v2.seconds_visible,
                     orientation=self.config.preferences.overlay_team.orientation,
                     position=self.config.preferences.overlay_team.position,
+                    delay_seconds=self.config.preferences.overlay_team.seconds_delay_before_show,
                 )
             except NoTeamFound:
                 logger.warning(f"No team found for {opp1.name}, {opp2.name}")
@@ -120,11 +122,15 @@ class GamePoller:
                 team_analysis = TeamAnalysis.from_players_stats(
                     player_stats=opp_players,
                 )
+                logger.info(list(zip(team_analysis.match_history.timestamps,
+                         team_analysis.match_history.ratings)))
+
                 self.team_analysis = team_analysis
                 team_analysis.show_overlay(
                     duration_seconds=self.config.preferences.overlay_2v2.seconds_visible,
                     orientation=self.config.preferences.overlay_team.orientation,
                     position=self.config.preferences.overlay_team.position,
+                    delay_seconds=self.config.preferences.overlay_2v2.seconds_delay_before_show,
                 )
             except NoTeamFound:
                 logger.warning(f"No team found for {opp_players}")
@@ -146,7 +152,8 @@ class GamePoller:
         player1v1analysis.show_overlay(
             duration_seconds=self.config.preferences.overlay_1v1.seconds_visible,
             orientation=self.config.preferences.overlay_1v1.orientation,
-            position=self.config.preferences.overlay_1v1.position
+            position=self.config.preferences.overlay_1v1.position,
+            delay_seconds=self.config.preferences.overlay_1v1.seconds_delay_before_show,
         )
 
 

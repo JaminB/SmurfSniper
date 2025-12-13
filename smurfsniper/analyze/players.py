@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from PySide6.QtCore import QTimer
 from pydantic import BaseModel
 
 from smurfsniper.analyze import BaseAnalysis
@@ -325,6 +326,7 @@ class Player2v2Analysis:
             duration_seconds: int = 30,
             position: str = "top_center",
             orientation: str = "vertical",
+            delay_seconds: float = 0.0,
     ):
         ov = Overlay(
             duration_seconds=duration_seconds,
@@ -337,19 +339,23 @@ class Player2v2Analysis:
         p2_tm = self.p2.overlay_teammates_block()
 
         if orientation == "horizontal":
-            ov.add_row(
-                [p1_main, p2_main],
-                style=Overlay.PLAYER_STYLE,
-            )
-            ov.add_row(
-                [p1_tm, p2_tm],
-                style=Overlay.TM_STYLE,
-            )
+            ov.add_row([p1_main, p2_main], style=Overlay.PLAYER_STYLE)
+            ov.add_row([p1_tm, p2_tm], style=Overlay.TM_STYLE)
         else:
             ov.add_row([p1_main], style=Overlay.PLAYER_STYLE)
             ov.add_row([p2_main], style=Overlay.PLAYER_STYLE)
             ov.add_row([p1_tm], style=Overlay.TM_STYLE)
             ov.add_row([p2_tm], style=Overlay.TM_STYLE)
 
-        ov.show()
+        # No delay → show now
+        if delay_seconds <= 0:
+            ov.show()
+            return
+
+        # Delay using Qt timer
+        def delayed_show():
+            ov.show()
+
+        delay_ms = int(delay_seconds * 1000)
+        QTimer.singleShot(delay_ms, delayed_show)
 
