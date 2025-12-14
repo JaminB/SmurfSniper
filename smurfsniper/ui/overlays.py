@@ -1,5 +1,6 @@
 from PySide6.QtCore import QEventLoop, Qt, QTimer
-from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QVBoxLayout,
+                               QWidget)
 
 from smurfsniper.ui.overlay_manager import register_overlay
 

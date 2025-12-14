@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class Me(BaseModel):
@@ -31,6 +31,8 @@ class Preferences(BaseModel):
     overlay_1v1: OverlayPreferences
     overlay_2v2: OverlayPreferences
     overlay_team: OverlayPreferences
+    overlay_player_log_1: OverlayPreferences
+    overlay_player_log_2: OverlayPreferences
 
     @classmethod
     def from_yaml(cls, data: dict) -> "Preferences":
@@ -38,6 +40,8 @@ class Preferences(BaseModel):
             overlay_1v1=OverlayPreferences(**data["1v1_overlay"]),
             overlay_2v2=OverlayPreferences(**data["2v2_overlay"]),
             overlay_team=OverlayPreferences(**data["team_overlay"]),
+            overlay_player_log_1=OverlayPreferences(**data["overlay_player_log_1"]),
+            overlay_player_log_2=OverlayPreferences(**data["overlay_player_log_2"]),
         )
 
 

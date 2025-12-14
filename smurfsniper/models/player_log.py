@@ -1,9 +1,8 @@
-# smurfsniper/models/player_log.py
-
 from datetime import datetime
 from pathlib import Path
 
-from peewee import CharField, Check, DateTimeField, IntegerField, Model, SqliteDatabase
+from peewee import (CharField, Check, DateTimeField, IntegerField, Model,
+                    SqliteDatabase)
 from platformdirs import user_data_dir
 
 from smurfsniper.models.player import Player, PlayerStats
@@ -55,6 +54,10 @@ class PlayerLog(BaseModel):
         return cls.from_player_stats(
             player.get_player_stats(min_mmr, max_mmr), match_status=match_status
         )
+
+    @property
+    def won_game(self):
+        return self.match_status == "victory"
 
     @classmethod
     def from_player_stats(
