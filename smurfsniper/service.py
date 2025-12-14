@@ -194,8 +194,14 @@ class GamePoller:
 
         logger.info(f"Detected 2v2 opponents: {opp1.name}, {opp2.name}")
         two_tone_chime()
-
+        self._show_opponent_history(
+            opp1_stats, opp1, self.config.preferences.overlay_player_log_1
+        )
+        self._show_opponent_history(
+            opp2_stats, opp2, self.config.preferences.overlay_player_log_2
+        )
         self.player_2v2_analysis = Player2v2Analysis(ps1, ps2)
+
         self.player_2v2_analysis.show_overlay(
             duration_seconds=self.config.preferences.overlay_2v2.seconds_visible,
             orientation=self.config.preferences.overlay_2v2.orientation,
