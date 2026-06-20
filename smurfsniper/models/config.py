@@ -39,7 +39,8 @@ class Preferences(BaseModel):
 
     @classmethod
     def from_yaml(cls, data: dict) -> "Preferences":
-        external = {"position": "bottom_center", **data.get("external_overlay", {})}
+        external_cfg = data.get("external_overlay") or {}
+        external = {"position": "bottom_center", **external_cfg}
         return cls(
             overlay_1v1=OverlayPreferences(**data["1v1_overlay"]),
             overlay_2v2=OverlayPreferences(**data["2v2_overlay"]),

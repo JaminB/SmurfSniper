@@ -21,7 +21,7 @@ import httpx
 from smurfsniper.api import sc2pulse
 from smurfsniper.logger import logger
 
-ALIGULAC_BASE = "http://aligulac.com"
+ALIGULAC_BASE = "https://aligulac.com"
 LIQUIPEDIA_BASE = "https://liquipedia.net"
 TIMEOUT = 12.0
 

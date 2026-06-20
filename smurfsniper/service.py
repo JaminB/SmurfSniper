@@ -101,6 +101,7 @@ class GamePoller:
     def _handle_game_end(self, players):
         logger.info("Game ended")
         close_all_overlays()
+        self.current_opponents = []
 
         me = self.config.me
         teammates = set(self.config.team.members)
