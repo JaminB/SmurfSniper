@@ -131,6 +131,21 @@ class BaseAnalysis:
         mh = self.match_history
         return mh.mmr_climb_velocity if mh else 0.0
 
+    @property
+    def current_streak(self) -> int:
+        mh = self.match_history
+        return mh.current_streak if mh else 0
+
+    @property
+    def longest_win_streak(self) -> int:
+        mh = self.match_history
+        return mh.longest_win_streak if mh else 0
+
+    @property
+    def mmr_volatility(self) -> float:
+        mh = self.match_history
+        return mh.mmr_volatility if mh else 0.0
+
     def _resolve_overlay_layout(self, orientation: str):
         """Returns layout blocks based on user-configured orientation."""
         summary = self.summary()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from statistics import pstdev
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, computed_field, field_validator
@@ -139,6 +140,45 @@ class TeamHistory(BaseModel):
         if not first:
             return 0
         return max((datetime.utcnow() - first).days, 0)
+
+    @property
+    def current_streak(self) -> int:
+        """Signed trailing streak: +N win streak, -N loss streak (0 = none).
+
+        Counts consecutive same-direction MMR moves from the most recent game,
+        skipping ties (zero deltas).
+        """
+        streak = 0
+        sign = 0
+        for delta in reversed(self.mmr_deltas):
+            if delta == 0:
+                continue
+            d = 1 if delta > 0 else -1
+            if sign == 0:
+                sign = d
+            elif d != sign:
+                break
+            streak += 1
+        return sign * streak
+
+    @property
+    def longest_win_streak(self) -> int:
+        """Longest run of consecutive wins (positive MMR deltas)."""
+        best = run = 0
+        for delta in self.mmr_deltas:
+            if delta > 0:
+                run += 1
+                best = max(best, run)
+            elif delta < 0:
+                run = 0
+        return best
+
+    @property
+    def mmr_volatility(self) -> float:
+        """Std-dev of per-game MMR changes (higher = swingier results)."""
+        if len(self.mmr_deltas) < 2:
+            return 0.0
+        return pstdev(self.mmr_deltas)
 
     @property
     def mmr_climb_velocity(self) -> float:

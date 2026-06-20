@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr
 from PySide6.QtCore import QTimer
 
 from smurfsniper.analyze import BaseAnalysis
-from smurfsniper.enums import League, RaceCode
+from smurfsniper.enums import League, RaceCode, TeamFormat
 from smurfsniper.models.match import (
     RecentMatch,
     avg_duration_seconds,
@@ -61,6 +61,9 @@ def _top_teammate_rows(
 class PlayerAnalysis(BaseAnalysis, BaseModel):
     current_race: Optional[str] = None
     player_stats: PlayerStats
+
+    _latest_team_cache: Any = PrivateAttr(default=None)
+    _latest_team_loaded: bool = PrivateAttr(default=False)
 
     @property
     def match_history(self):
@@ -116,6 +119,91 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
     @property
     def total_games(self) -> int:
         return self.player_stats.totalGamesPlayed
+
+    @property
+    def _latest_team(self):
+        """Most-recently-played team record, or None. Cached per instance."""
+        if self._latest_team_loaded:
+            return self._latest_team_cache
+        teams = list(self.player_stats.members.character.teams)
+        # Prefer 1v1 ladder teams so league/rank reflect solo play; fall back
+        # to any team if the player has no 1v1 record.
+        solo = [t for t in teams if t.queueType == TeamFormat._1V1.value]
+        pool = solo or teams
+        latest = None
+        newest = ""
+        for t in pool:
+            stamp = t.lastPlayed or ""
+            if latest is None or stamp > newest:
+                latest = t
+                newest = stamp
+        self._latest_team_cache = latest
+        self._latest_team_loaded = True
+        return latest
+
+    @property
+    def activity_rate(self) -> float:
+        """Games played per day over the account's lifetime (burst grinders)."""
+        return round(self.total_games / max(self.account_age_days, 1), 1)
+
+    @property
+    def peak_gap(self) -> Optional[int]:
+        """ratingMax − current MMR. Large gap = decayed/returning strong player."""
+        if self.current_mmr is None:
+            return None
+        return self.player_stats.ratingMax - self.current_mmr
+
+    @property
+    def is_off_racing(self) -> bool:
+        """True when this game's race differs from the player's most-played race."""
+        if not self.current_race or self.current_race == "Unknown":
+            return False
+        return self.current_race != self.most_played_race
+
+    @property
+    def current_league(self) -> Optional[str]:
+        """League of the player's current team (vs leagueMax ceiling)."""
+        team = self._latest_team
+        if team is None:
+            return None
+        return League.from_int(team.leagueType).name
+
+    @property
+    def rank_percentile(self) -> Optional[float]:
+        """Global rank as a top-X% (smaller = better). None if data missing."""
+        team = self._latest_team
+        if team is None or not team.globalRank or not team.globalTeamCount:
+            return None
+        return round(100 * team.globalRank / team.globalTeamCount, 1)
+
+    @property
+    def clan_info(self) -> Optional[str]:
+        """Clan tag + average rating, e.g. '[BASKGG] avg 5950'."""
+        clan = self.player_stats.members.clan
+        if not clan or not clan.get("tag"):
+            return None
+        avg = clan.get("avgRating")
+        avg_str = f" avg {avg}" if avg else ""
+        return f"[{clan['tag']}]{avg_str}"
+
+    @property
+    def context_line(self) -> Optional[str]:
+        """One-line digest of notable secondary signals (only what stands out)."""
+        parts: List[str] = []
+        if self.is_off_racing:
+            parts.append(f"OFF-RACE (main {self.most_played_race})")
+        cs = self.current_streak
+        if abs(cs) >= 3:
+            parts.append(f"{'W' if cs > 0 else 'L'}{abs(cs)} streak")
+        pg = self.peak_gap
+        if pg and pg >= 300:
+            parts.append(f"peak {self.player_stats.ratingMax} (-{pg})")
+        rp = self.rank_percentile
+        if rp is not None:
+            parts.append(f"top {rp}%")
+        if self.clan_info:
+            parts.append(self.clan_info)
+        return "  ".join(parts) or None
 
     @property
     def pro_identity(self) -> Optional[str]:
@@ -305,6 +393,16 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
             "Smurf Reasons": self.smurf_reasons,
             "Account Age (days)": self.account_age_days,
             "MMR Climb (per day)": round(self.mmr_climb_velocity, 1),
+            "Activity (games/day)": self.activity_rate,
+            "Peak Gap": self.peak_gap,
+            "Current League": self.current_league,
+            "Rank Percentile": self.rank_percentile,
+            "Current Streak": self.current_streak,
+            "Longest Win Streak": self.longest_win_streak,
+            "MMR Volatility": round(self.mmr_volatility, 1),
+            "Off-Racing": self.is_off_racing,
+            "Clan": self.clan_info,
+            "Context": self.context_line,
             "Real Record": self.real_record,
             "Recent Maps": self.map_summary,
             "Avg Duration (s)": self.avg_game_duration,
@@ -343,6 +441,8 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         ]
         if summary.get("Pro"):
             rows.insert(1, summary["Pro"])
+        if summary.get("Context"):
+            rows.append(summary["Context"])
         if summary.get("Real Record"):
             line = f"Recent {summary['Real Record']}"
             if summary.get("Recent Maps"):
@@ -384,6 +484,8 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         ]
         if s.get("Pro"):
             lines.insert(1, s["Pro"])
+        if s.get("Context"):
+            lines.append(s["Context"])
         if s.get("Real Record"):
             extra = f"Recent {s['Real Record']}"
             if s.get("Recent Maps"):
