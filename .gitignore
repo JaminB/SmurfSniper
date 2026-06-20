@@ -1,0 +1,16 @@
+# Local config (may contain secrets)
+config.yaml
+config.yml
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Logs / runtime
+logs/
+*.sqlite3
+
+# IDE
+.idea/

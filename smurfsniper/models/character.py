@@ -1,8 +1,8 @@
 from typing import List, Optional
 
-import httpx
 from pydantic import BaseModel, PrivateAttr
 
+from smurfsniper.api import sc2pulse
 from smurfsniper.models.team import Team
 
 
@@ -20,16 +20,10 @@ class Character(BaseModel):
 
     @property
     def teams(self) -> List[Team]:
-        url = (
-            "https://sc2pulse.nephest.com/sc2/api/character-teams"
-            f"?characterId={self.id}"
-        )
+        if self._team_cache is not None:
+            return self._team_cache
 
-        with httpx.Client(timeout=10.0) as client:
-            resp = client.get(url)
-            resp.raise_for_status()
-            data = resp.json()
-
+        data = sc2pulse.character_teams(self.id)
         teams = [Team.model_validate(entry) for entry in data]
         self._team_cache = teams
         return teams
