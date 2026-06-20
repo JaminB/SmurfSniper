@@ -316,8 +316,12 @@ def render_overlay(
     ov = Overlay(prefs.seconds_visible)
     ov.position = prefs.position
 
-    for intel in intels:
-        ov.add_row([intel.to_block()], style=Overlay.PLAYER_STYLE, spacing=12)
+    # One row with a block per opponent → opponents sit side-by-side.
+    ov.add_row(
+        [intel.to_block() for intel in intels],
+        style=Overlay.PLAYER_STYLE,
+        spacing=12,
+    )
 
     delay = prefs.seconds_delay_before_show
     if delay <= 0:
