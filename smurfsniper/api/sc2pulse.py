@@ -27,6 +27,7 @@ TIMEOUT = 25.0
 MAX_RETRIES = 3
 BACKOFF_BASE = 0.5  # seconds; doubled each retry, plus jitter
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+_UID_BATCH = 10  # max team legacy UIDs per /team-histories request
 
 # Fixed params shared by every team-histories request.
 _HISTORY_PARAMS = [
@@ -116,12 +117,21 @@ def character_teams(character_id: int) -> list:
 
 
 def team_histories(legacy_uids: Sequence[str]) -> list:
-    """GET /team-histories for up to 10 team legacy UIDs in one request."""
-    uids = [u for u in legacy_uids if u][:10]
+    """GET /team-histories for the given team legacy UIDs.
+
+    The API caps UIDs per request, so callers passing more than ``_UID_BATCH``
+    are split across multiple requests and the results concatenated.
+    """
+    uids = [u for u in legacy_uids if u]
     if not uids:
         return []
-    params = [("teamLegacyUid", uid) for uid in uids] + _HISTORY_PARAMS
-    return _get("/team-histories", params)
+
+    merged: list = []
+    for i in range(0, len(uids), _UID_BATCH):
+        batch = uids[i : i + _UID_BATCH]
+        params = [("teamLegacyUid", uid) for uid in batch] + _HISTORY_PARAMS
+        merged.extend(_get("/team-histories", params))
+    return merged
 
 
 def parse_team_history(data, legacy_uid: str) -> Optional[TeamHistory]:
