@@ -170,11 +170,15 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
 
     @property
     def rank_percentile(self) -> Optional[float]:
-        """Global rank as a top-X% (smaller = better). None if data missing."""
+        """Percent of the global ladder this player outranks (higher = better).
+
+        e.g. rank 117909 of 136107 -> outranks 13.4% -> 13.4. None if missing.
+        """
         team = self._latest_team
         if team is None or not team.globalRank or not team.globalTeamCount:
             return None
-        return round(100 * team.globalRank / team.globalTeamCount, 1)
+        beaten = team.globalTeamCount - team.globalRank
+        return round(100 * beaten / team.globalTeamCount, 1)
 
     @property
     def clan_info(self) -> Optional[str]:
@@ -200,7 +204,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
             parts.append(f"peak {self.player_stats.ratingMax} (-{pg})")
         rp = self.rank_percentile
         if rp is not None:
-            parts.append(f"top {rp}%")
+            parts.append(f"better than {rp}%")
         if self.clan_info:
             parts.append(self.clan_info)
         return "  ".join(parts) or None
@@ -396,7 +400,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
             "Activity (games/day)": self.activity_rate,
             "Peak Gap": self.peak_gap,
             "Current League": self.current_league,
-            "Rank Percentile": self.rank_percentile,
+            "Better Than (%)": self.rank_percentile,
             "Current Streak": self.current_streak,
             "Longest Win Streak": self.longest_win_streak,
             "MMR Volatility": round(self.mmr_volatility, 1),
