@@ -34,13 +34,13 @@ class Preferences(BaseModel):
     overlay_player_log_1: OverlayPreferences
     overlay_player_log_2: OverlayPreferences
     overlay_external: OverlayPreferences = OverlayPreferences(
-        position="bottom_center"
+        position="top_center"
     )
 
     @classmethod
     def from_yaml(cls, data: dict) -> "Preferences":
         external_cfg = data.get("external_overlay") or {}
-        external = {"position": "bottom_center", **external_cfg}
+        external = {"position": "top_center", **external_cfg}
         return cls(
             overlay_1v1=OverlayPreferences(**data["1v1_overlay"]),
             overlay_2v2=OverlayPreferences(**data["2v2_overlay"]),

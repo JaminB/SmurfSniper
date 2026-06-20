@@ -239,10 +239,12 @@ def twitch_live(character_id: int) -> Optional[dict]:
     return None
 
 
-def _twitch_url_if_exists(handle: str) -> Optional[str]:
-    """Twitch URL if a user with this login exists, else ``None``.
+def _twitch_url_if_active(handle: str) -> Optional[str]:
+    """Twitch URL if this login exists *and* has content (a live stream or at
+    least one past video), else ``None``.
 
-    Resolves via Twitch's public GraphQL ``user(login:)`` lookup (keyless).
+    Resolves via Twitch's public GraphQL (keyless): an account that exists but
+    has never streamed is not worth linking.
     """
     login = handle.lower()
     try:
@@ -250,7 +252,10 @@ def _twitch_url_if_exists(handle: str) -> Optional[str]:
             _TWITCH_GQL,
             headers={"Client-Id": _TWITCH_CLIENT_ID},
             json={
-                "query": "query($l:String!){user(login:$l){id}}",
+                "query": (
+                    "query($l:String!){user(login:$l){id "
+                    "stream{id} videos(first:1){edges{node{id}}}}}"
+                ),
                 "variables": {"l": login},
             },
         )
@@ -259,19 +264,33 @@ def _twitch_url_if_exists(handle: str) -> Optional[str]:
     except (httpx.HTTPError, ValueError) as exc:
         logger.warning(f"Twitch resolve failed for {handle!r}: {exc}")
         return None
+
     user = (data.get("data") or {}).get("user") if isinstance(data, dict) else None
-    return f"https://twitch.tv/{handle}" if user else None
+    if not user:
+        return None
+    is_live = bool(user.get("stream"))
+    has_videos = bool(((user.get("videos") or {}).get("edges")) or [])
+    return f"https://twitch.tv/{handle}" if (is_live or has_videos) else None
 
 
-def _youtube_url_if_exists(handle: str) -> Optional[str]:
-    """YouTube channel URL if ``@handle`` resolves (HTTP 200), else ``None``."""
+def _youtube_url_if_active(handle: str) -> Optional[str]:
+    """YouTube channel URL if ``@handle`` resolves *and* has at least one
+    uploaded video, else ``None``.
+
+    Checks the channel's ``/videos`` tab for a video entry in the page payload
+    so empty/parked channels are not linked.
+    """
     url = f"https://www.youtube.com/@{handle}"
     try:
-        resp = _client("social").get(url)
+        resp = _client("social").get(f"{url}/videos")
     except httpx.HTTPError as exc:
         logger.warning(f"YouTube resolve failed for {handle!r}: {exc}")
         return None
-    return url if resp.status_code == 200 else None
+    if resp.status_code != 200:
+        return None
+    # The /videos tab embeds "videoId" entries only when uploads exist; a
+    # channel with no videos (or a missing handle, which 404s) lacks them.
+    return url if '"videoId"' in resp.text else None
 
 
 def battlenet_profile_url(
@@ -295,21 +314,22 @@ def battlenet_profile_url(
 
 
 def resolved_handle_urls(name: str) -> Dict[str, str]:
-    """Same-handle profile URLs that actually resolve on Twitch / YouTube.
+    """Same-handle profile URLs on Twitch / YouTube that have actual content.
 
-    Only platforms where the account is verified to exist are returned, so no
-    speculative dead links are shown. Failures (network/timeout) drop that
-    platform rather than guessing.
+    A platform is only included when the account exists *and* has content (a
+    live stream or past video on Twitch, at least one upload on YouTube), so no
+    speculative or empty/parked channels are shown. Failures (network/timeout)
+    drop that platform rather than guessing.
     """
     handle = re.sub(r"\s+", "", name.split("#")[0].strip())
     if not handle:
         return {}
 
     resolved: Dict[str, str] = {}
-    twitch = _twitch_url_if_exists(handle)
+    twitch = _twitch_url_if_active(handle)
     if twitch:
         resolved["Twitch"] = twitch
-    youtube = _youtube_url_if_exists(handle)
+    youtube = _youtube_url_if_active(handle)
     if youtube:
         resolved["YouTube"] = youtube
     return resolved
