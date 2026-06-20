@@ -166,8 +166,9 @@ class ExternalIntel:
 
     @property
     def has_external_footprint(self) -> bool:
-        """True if any *external* source resolved (web/stream), excluding the
-        behavioral profile, which is derived from in-game data and always set."""
+        """True if any *external* source resolved (web/stream). The behavioral
+        profile is excluded: it comes from in-game data, not a web lookup, and
+        may be ``None`` when the opponent has no tracked ladder matches."""
         return bool(
             self.aligulac or self.liquipedia or self.twitch_live or self.handle_urls
         )

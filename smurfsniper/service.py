@@ -31,6 +31,21 @@ POSTGAME_POSITIONS = [
     "bottom_right",
 ]
 
+class _HintBridge(QObject):
+    """Marshals the cross-network hint overlay back onto the Qt thread.
+
+    The scout runs network I/O in a background thread; this bridge (created on
+    the Qt thread) lets that worker request the hint overlay via a queued signal
+    so the widget is built on the Qt thread.
+    """
+
+    show = Signal(object)  # OverlayPreferences
+
+    def __init__(self):
+        super().__init__()
+        self.show.connect(external_intel.show_hint_overlay)
+
+
 class GamePoller:
     def __init__(self, url: str, config_path: str):
         init_player_log_db()
@@ -46,6 +61,8 @@ class GamePoller:
         self.current_opponents = []
         # Cross-network intel gathered once at game start; reused by Ctrl+F2.
         self.current_intel = []
+        # Bridge so the background scout can show its hint on the Qt thread.
+        self._hint_bridge = _HintBridge()
 
     def poll_once(self):
         data = self._fetch_game_state()
@@ -185,9 +202,22 @@ class GamePoller:
     def _scout_and_hint(self):
         """Gather cross-network intel for the current opponents once, cache it
         for Ctrl+F2, and if any opponent has an external footprint play a
-        distinct chime and hint that details are available via Ctrl+F2."""
+        distinct chime and hint that details are available via Ctrl+F2.
+
+        Runs in a background thread: ``ExternalIntel.gather`` performs network
+        I/O, and this is invoked from ``poll_once`` on the Qt GUI thread, so the
+        work must not block the event loop. The hint overlay is marshalled back
+        onto the Qt thread via ``_hint_bridge``.
+        """
+        opponents = list(self.current_opponents)
+        prefs = self.config.preferences.overlay_external
+        threading.Thread(
+            target=self._do_scout, args=(opponents, prefs), daemon=True
+        ).start()
+
+    def _do_scout(self, opponents, prefs):
         intel = []
-        for stats in self.current_opponents:
+        for stats in opponents:
             try:
                 intel.append(ExternalIntel.gather(stats))
             except Exception as e:  # never break the game flow on a lookup
@@ -196,9 +226,7 @@ class GamePoller:
 
         if any(i.has_external_footprint for i in intel):
             footprint_chime()
-            external_intel.show_hint_overlay(
-                self.config.preferences.overlay_external
-            )
+            self._hint_bridge.show.emit(prefs)
 
     def _show_opponent_history(
         self, stats, opp, overlay_preferences: OverlayPreferences
