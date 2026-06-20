@@ -339,7 +339,9 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         if not records:
             return None
         ordered = sorted(records.items(), key=lambda kv: -(kv[1][0] + kv[1][1]))
-        return " · ".join(f"{name} {w}-{l}" for name, (w, l) in ordered[:3])
+        return " · ".join(
+            f"{name} {wins}-{losses}" for name, (wins, losses) in ordered[:3]
+        )
 
     @property
     def most_played_race(self) -> str:
@@ -350,7 +352,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return RaceCode[key].name
 
     def _smurf_assessment(self) -> tuple[int, List[str]]:
-        """Graded smurf likelihood (0–100) with human-readable reasons.
+        """Graded smurf likelihood (0-100) with human-readable reasons.
 
         Blends recent/lifetime winrate with account age and MMR climb velocity.
         Each signal contributes weighted points; the total is capped at 100.
@@ -417,7 +419,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         else:
             return None
 
-        detail = f" – {reasons[0]}" if reasons else ""
+        detail = f" - {reasons[0]}" if reasons else ""
         return f"{label} ({score}/100){detail}"
 
     @property

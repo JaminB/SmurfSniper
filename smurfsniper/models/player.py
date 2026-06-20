@@ -41,7 +41,7 @@ class PlayerStats(BaseModel):
 
     _match_history_cache: Optional[TeamHistory] = None
     _social_links_cache: Optional[Dict[str, str]] = None
-    _recent_matches_cache: Optional[List[RecentMatch]] = None
+    _recent_matches_cache: Optional[Dict[int, List[RecentMatch]]] = None
 
     @property
     def is_pro(self) -> bool:
@@ -86,8 +86,10 @@ class PlayerStats(BaseModel):
         Lazily fetched from SC2Pulse /character-matches and cached. SC2Pulse only
         retains match history for tracked characters, so this is often empty.
         """
-        if self._recent_matches_cache is not None:
-            return self._recent_matches_cache
+        if self._recent_matches_cache is None:
+            self._recent_matches_cache = {}
+        if limit in self._recent_matches_cache:
+            return self._recent_matches_cache[limit]
 
         char_id = self.members.character.id
         try:
@@ -102,7 +104,7 @@ class PlayerStats(BaseModel):
             if parsed is not None:
                 matches.append(parsed)
 
-        self._recent_matches_cache = matches
+        self._recent_matches_cache[limit] = matches
         return matches
 
     @property

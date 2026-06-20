@@ -51,9 +51,13 @@ class RecentMatch(BaseModel):
         if mine is None:
             return None
 
+        date_value = match.get("date")
+        if date_value is None:
+            return None
+
         map_info = entry.get("map") or {}
         return cls(
-            date=match["date"],
+            date=date_value,
             type=match.get("type", "UNKNOWN"),
             region=match.get("region", ""),
             map_name=map_info.get("name"),
@@ -70,12 +74,12 @@ def map_records(matches: List[RecentMatch]) -> Dict[str, Tuple[int, int]]:
     for m in matches:
         if not m.map_name:
             continue
-        w, l = records.get(m.map_name, (0, 0))
+        wins, losses = records.get(m.map_name, (0, 0))
         if m.decision == "WIN":
-            w += 1
+            wins += 1
         elif m.decision == "LOSS":
-            l += 1
-        records[m.map_name] = (w, l)
+            losses += 1
+        records[m.map_name] = (wins, losses)
     return records
 
 

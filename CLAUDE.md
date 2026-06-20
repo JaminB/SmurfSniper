@@ -82,10 +82,21 @@ Top level (`smurfsniper/`):
 
 ## Smurf detection heuristic
 
-`analyze/players.py::PlayerAnalysis.smurf_warning`:
-- 3-day winrate ≥ 80% with 5+ games → "⚠️ Likely Smurf"
-- 7-day winrate ≥ 75% with 8+ games → "⚠️ Possible Smurf"
-- lifetime winrate ≥ 70% with 30+ games → "⚠️ Suspiciously strong"
+`analyze/players.py::PlayerAnalysis._smurf_assessment`
+computes a graded **0-100 smurf score** (with reasons); `smurf_warning` maps it
+to a label: score ≥ 70 → "⚠️ Likely Smurf", ≥ 45 → "⚠️ Possible Smurf",
+≥ 25 → "⚠️ Suspiciously strong".
+
+Score contributions (capped at 100):
+- 3-day winrate ≥ 80% with 5+ games → +35
+- 7-day winrate ≥ 75% with 8+ games → +25
+- lifetime winrate ≥ 70% with 30+ games → +15
+- new account ≤ 14d → +30, or ≤ 30d → +18 (needs ≥ 5 games of history)
+- MMR climb ≥ 15/day → +20, or ≥ 8/day → +10
+
+This graded model intentionally replaces the earlier fixed three-tier winrate
+heuristic so a brand-new, fast-climbing account is flagged even before its
+winrate window fills.
 
 ## External services
 

@@ -169,8 +169,8 @@ class TeamHistory(BaseModel):
             if delta > 0:
                 run += 1
                 best = max(best, run)
-            elif delta < 0:
-                run = 0
+            else:
+                run = 0  # ties (delta == 0) also break a win streak
         return best
 
     @property
