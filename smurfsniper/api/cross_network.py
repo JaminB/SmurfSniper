@@ -33,6 +33,11 @@ _aligulac_api_key: str = ""
 # Liquipedia API ToS require a descriptive, contactable User-Agent.
 USER_AGENT = "smurfsniper/0.1 (SC2 overlay; https://github.com/JaminB/smurfsniper)"
 
+# Twitch's public web Client-Id (embedded in the Twitch web app). Lets us resolve
+# whether a username exists via the GraphQL endpoint without an API key.
+_TWITCH_GQL = "https://gql.twitch.tv/gql"
+_TWITCH_CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko"
+
 # A name is "distinctive" only if SC2Pulse returns at most this many accounts whose
 # base name exactly matches — more than that means the handle is common.
 _MAX_EXACT_CANDIDATES = 3
@@ -42,10 +47,12 @@ _BARCODE_CHARS = set("il1|")
 
 _aligulac_client: Optional[httpx.Client] = None
 _liquipedia_client: Optional[httpx.Client] = None
+# Pooled client with no base_url for absolute-URL social-network resolve checks.
+_social_client: Optional[httpx.Client] = None
 
 
 def _client(which: str) -> httpx.Client:
-    global _aligulac_client, _liquipedia_client
+    global _aligulac_client, _liquipedia_client, _social_client
     if which == "aligulac":
         if _aligulac_client is None:
             _aligulac_client = httpx.Client(
@@ -53,6 +60,13 @@ def _client(which: str) -> httpx.Client:
                 headers={"User-Agent": USER_AGENT},
             )
         return _aligulac_client
+    if which == "social":
+        if _social_client is None:
+            _social_client = httpx.Client(
+                timeout=TIMEOUT, follow_redirects=True,
+                headers={"User-Agent": USER_AGENT},
+            )
+        return _social_client
     if _liquipedia_client is None:
         _liquipedia_client = httpx.Client(
             base_url=LIQUIPEDIA_BASE, timeout=TIMEOUT,
@@ -69,12 +83,13 @@ def set_aligulac_api_key(key: Optional[str]) -> None:
 
 def close() -> None:
     """Close pooled clients (e.g. on shutdown). Safe to call repeatedly."""
-    global _aligulac_client, _liquipedia_client
-    for c in (_aligulac_client, _liquipedia_client):
+    global _aligulac_client, _liquipedia_client, _social_client
+    for c in (_aligulac_client, _liquipedia_client, _social_client):
         if c is not None:
             c.close()
     _aligulac_client = None
     _liquipedia_client = None
+    _social_client = None
 
 
 def _base_name(name: str) -> str:
@@ -221,14 +236,57 @@ def twitch_live(character_id: int) -> Optional[dict]:
     return None
 
 
-def candidate_handle_urls(name: str) -> Dict[str, str]:
-    """Build same-handle profile URLs on other networks (unverified guesses)."""
+def _twitch_url_if_exists(handle: str) -> Optional[str]:
+    """Twitch URL if a user with this login exists, else ``None``.
+
+    Resolves via Twitch's public GraphQL ``user(login:)`` lookup (keyless).
+    """
+    login = handle.lower()
+    try:
+        resp = _client("social").post(
+            _TWITCH_GQL,
+            headers={"Client-Id": _TWITCH_CLIENT_ID},
+            json={
+                "query": "query($l:String!){user(login:$l){id}}",
+                "variables": {"l": login},
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        logger.warning(f"Twitch resolve failed for {handle!r}: {exc}")
+        return None
+    user = (data.get("data") or {}).get("user") if isinstance(data, dict) else None
+    return f"https://twitch.tv/{handle}" if user else None
+
+
+def _youtube_url_if_exists(handle: str) -> Optional[str]:
+    """YouTube channel URL if ``@handle`` resolves (HTTP 200), else ``None``."""
+    url = f"https://www.youtube.com/@{handle}"
+    try:
+        resp = _client("social").get(url)
+    except httpx.HTTPError as exc:
+        logger.warning(f"YouTube resolve failed for {handle!r}: {exc}")
+        return None
+    return url if resp.status_code == 200 else None
+
+
+def resolved_handle_urls(name: str) -> Dict[str, str]:
+    """Same-handle profile URLs that actually resolve on Twitch / YouTube.
+
+    Only platforms where the account is verified to exist are returned, so no
+    speculative dead links are shown. Failures (network/timeout) drop that
+    platform rather than guessing.
+    """
     handle = re.sub(r"\s+", "", name.split("#")[0].strip())
     if not handle:
         return {}
-    return {
-        "Twitch": f"https://twitch.tv/{handle}",
-        "YouTube": f"https://youtube.com/@{handle}",
-        "X": f"https://x.com/{handle}",
-        "Steam": f"https://steamcommunity.com/id/{handle}",
-    }
+
+    resolved: Dict[str, str] = {}
+    twitch = _twitch_url_if_exists(handle)
+    if twitch:
+        resolved["Twitch"] = twitch
+    youtube = _youtube_url_if_exists(handle)
+    if youtube:
+        resolved["YouTube"] = youtube
+    return resolved

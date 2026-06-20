@@ -181,7 +181,7 @@ class ExternalIntel:
             logger.info(f"Ctrl+F2: gathering cross-network intel for {name!r}.")
             aligulac = cross_network.aligulac_player(name)
             liquipedia = cross_network.liquipedia_page(name)
-            handle_urls = cross_network.candidate_handle_urls(name)
+            handle_urls = cross_network.resolved_handle_urls(name)
         else:
             logger.info(f"Ctrl+F2: {name!r} not distinctive — web lookup skipped.")
 
@@ -224,8 +224,10 @@ class ExternalIntel:
             lines.append(f"🔴 Twitch LIVE: {title}" + (f"\n  {url}" if url else ""))
 
         if self.handle_urls:
-            guesses = "  ".join(self.handle_urls.values())
-            lines.append(f"guesses: {guesses}")
+            links = "  ".join(
+                f"{plat}: {url}" for plat, url in self.handle_urls.items()
+            )
+            lines.append(links)
 
         if len(lines) == 1:
             lines.append("no scouting data found")
