@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import random
 import time
+from functools import lru_cache
 from typing import Dict, List, Optional, Sequence
 
 import httpx
@@ -114,6 +115,77 @@ def search_characters(name: str) -> list:
 def character_teams(character_id: int) -> list:
     """GET /character-teams?characterId=<id>. Returns raw team entries."""
     return _get("/character-teams", {"characterId": character_id})
+
+
+def character_links(character_id: int) -> list:
+    """GET /character-links?characterId=<id>. Returns raw link-group entries."""
+    return _get("/character-links", {"characterId": character_id})
+
+
+def character_matches(character_id: int, limit: int = 25) -> list:
+    """GET /character-matches?characterId=<id>. Returns the ``result`` list.
+
+    The endpoint wraps matches in ``{"result": [...], "navigation": {...}}``;
+    this unwraps to the result list (empty when the player has no tracked games).
+    """
+    data = _get("/character-matches", {"characterId": character_id, "limit": limit})
+    if isinstance(data, dict):
+        return data.get("result", [])
+    return data
+
+
+@lru_cache(maxsize=1)
+def current_season() -> int:
+    """Latest season battlenetId. Cached for the process (changes ~quarterly)."""
+    data = _get("/season/list/all", None)
+    return data[0]["battlenetId"]
+
+
+@lru_cache(maxsize=32)
+def tier_thresholds(queue: str, team_type: str, season: int, region: str) -> dict:
+    """MMR bounds per league/tier: {region: {leagueType: {tier: [lo, hi]}}}.
+
+    Cached per (queue, team_type, season, region) since bounds are stable
+    within a season.
+    """
+    return _get(
+        "/tier-thresholds",
+        {"queue": queue, "teamType": team_type, "season": season, "region": region},
+    )
+
+
+_STREAMS_TTL = 30.0  # seconds; live-stream list changes slowly
+_streams_cache: Optional[list] = None
+_streams_fetched_at = 0.0
+
+
+@lru_cache(maxsize=256)
+def pro_player(pro_player_id: int) -> Optional[dict]:
+    """Full pro bio + external links via /entities?proPlayerId.
+
+    Returns the first ``proPlayers`` entry ({proPlayer, proTeam, links}) or
+    None. Cached per id (bio changes rarely).
+    """
+    data = _get("/entities", {"proPlayerId": pro_player_id})
+    entries = data.get("proPlayers") if isinstance(data, dict) else None
+    return entries[0] if entries else None
+
+
+def streams(limit: int = 100) -> list:
+    """Currently-live identified SC2 streams. Returns the ``streams`` list.
+
+    Cached for ``_STREAMS_TTL`` so multiple opponents in one game share a
+    single request.
+    """
+    global _streams_cache, _streams_fetched_at
+    now = time.monotonic()
+    if _streams_cache is not None and now - _streams_fetched_at < _STREAMS_TTL:
+        return _streams_cache
+
+    data = _get("/streams", {"limit": limit})
+    _streams_cache = data.get("streams", []) if isinstance(data, dict) else data
+    _streams_fetched_at = now
+    return _streams_cache
 
 
 def team_histories(legacy_uids: Sequence[str]) -> list:
