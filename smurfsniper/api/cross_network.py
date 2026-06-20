@@ -19,6 +19,7 @@ from typing import Dict, Optional, Tuple
 import httpx
 
 from smurfsniper.api import sc2pulse
+from smurfsniper.enums import Region
 from smurfsniper.logger import logger
 
 ALIGULAC_BASE = "https://aligulac.com"
@@ -271,6 +272,26 @@ def _youtube_url_if_exists(handle: str) -> Optional[str]:
         logger.warning(f"YouTube resolve failed for {handle!r}: {exc}")
         return None
     return url if resp.status_code == 200 else None
+
+
+def battlenet_profile_url(
+    region: str, realm: int, profile_id: int
+) -> Optional[str]:
+    """Official Blizzard SC2 career profile URL for a matched account.
+
+    Deterministic from identity we already hold (region/realm/battlenetId), so
+    it always points at the right player — no lookup needed.
+    """
+    if not profile_id or realm is None:
+        return None
+    try:
+        region_id = Region[region].value
+    except KeyError:
+        return None
+    return (
+        f"https://starcraft2.blizzard.com/en-us/profile/"
+        f"{region_id}/{realm}/{profile_id}/"
+    )
 
 
 def resolved_handle_urls(name: str) -> Dict[str, str]:

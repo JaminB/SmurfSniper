@@ -163,14 +163,22 @@ class ExternalIntel:
     liquipedia: Optional[Tuple[str, str]] = None
     twitch_live: Optional[dict] = None
     handle_urls: Dict[str, str] = field(default_factory=dict)
+    social_links: Dict[str, str] = field(default_factory=dict)
+    battlenet_url: Optional[str] = None
 
     @property
     def has_external_footprint(self) -> bool:
-        """True if any *external* source resolved (web/stream). The behavioral
-        profile is excluded: it comes from in-game data, not a web lookup, and
-        may be ``None`` when the opponent has no tracked ladder matches."""
+        """True if any *external* source resolved (web/stream/self-linked).
+
+        Excludes the behavioral profile (in-game data, may be ``None``) and the
+        Battle.net URL (every matched account has one — it is not a discovered
+        footprint, just a deterministic link)."""
         return bool(
-            self.aligulac or self.liquipedia or self.twitch_live or self.handle_urls
+            self.aligulac
+            or self.liquipedia
+            or self.twitch_live
+            or self.handle_urls
+            or self.social_links
         )
 
     @classmethod
@@ -192,6 +200,18 @@ class ExternalIntel:
         aligulac = cross_network.aligulac_player(name)
         liquipedia = cross_network.liquipedia_page(name)
 
+        # Self-declared links on the player's SC2Pulse profile (Discord / Twitch
+        # / Replaystats / ...) — the main footprint a non-pro leaves. Plus the
+        # deterministic official Blizzard career page.
+        try:
+            social = stats.social_links()
+        except Exception as exc:  # never break the scout on a links lookup
+            logger.warning(f"social_links lookup failed for {name!r}: {exc}")
+            social = {}
+        battlenet = cross_network.battlenet_profile_url(
+            char.region, char.realm, char.battlenetId
+        )
+
         handle_urls: Dict[str, str] = {}
         if cross_network.is_distinctive_name(name):
             logger.info(f"Ctrl+F2: resolving handle URLs for {name!r}.")
@@ -207,6 +227,8 @@ class ExternalIntel:
             liquipedia=liquipedia,
             twitch_live=twitch,
             handle_urls=handle_urls,
+            social_links=social,
+            battlenet_url=battlenet,
         )
 
     def to_block(self) -> str:
@@ -231,6 +253,20 @@ class ExternalIntel:
         if self.liquipedia:
             title, url = self.liquipedia
             lines.append(f"Liquipedia: {title}\n  {url}")
+
+        # BATTLE_NET here is a battlenet:// desktop deep-link; we render the
+        # clean web profile URL separately, so drop it from the linked list.
+        linked_items = [
+            (plat, url)
+            for plat, url in self.social_links.items()
+            if plat != "BATTLE_NET"
+        ]
+        if linked_items:
+            linked = "  ".join(f"{plat}: {url}" for plat, url in linked_items)
+            lines.append(f"Linked: {linked}")
+
+        if self.battlenet_url:
+            lines.append(f"Battle.net: {self.battlenet_url}")
 
         if self.twitch_live:
             title = self.twitch_live.get("title") or "live now"
