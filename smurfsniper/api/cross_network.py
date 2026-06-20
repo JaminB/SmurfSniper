@@ -114,8 +114,10 @@ def is_distinctive_name(name: str) -> bool:
     if set(base) <= _BARCODE_CHARS:
         return False
 
+    # Query by base name: SC2Pulse character names carry a ``#1234``
+    # discriminator, and searching with it attached returns nothing.
     try:
-        candidates = sc2pulse.search_characters(name)
+        candidates = sc2pulse.search_characters(name.split("#")[0].strip())
     except sc2pulse.SC2PulseError as exc:
         logger.warning(f"Distinctiveness check failed for {name!r}: {exc}")
         return False
