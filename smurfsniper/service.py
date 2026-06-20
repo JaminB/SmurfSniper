@@ -1,15 +1,18 @@
 import signal
 import sys
+import threading
 
 import httpx
 import keyboard
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtWidgets import QApplication
 
-from smurfsniper.api import sc2pulse
+from smurfsniper.api import cross_network, sc2pulse
 from smurfsniper.api.sc2pulse import SC2PulseError
 from smurfsniper.sounds import one_tone_chime, two_tone_chime
+from smurfsniper.analyze import external_intel
+from smurfsniper.analyze.external_intel import ExternalIntel
 from smurfsniper.analyze.player_logs import PlayerLogAnalysis
 from smurfsniper.analyze.players import Player2v2Analysis, PlayerAnalysis
 from smurfsniper.analyze.teams import NoTeamFound, TeamAnalysis
@@ -38,6 +41,9 @@ class GamePoller:
         self.player_analysis = None
         self.player_2v2_analysis = None
         self.team_analysis = None
+        # Raw PlayerStats for the current opponent(s); used by the Ctrl+F2
+        # cross-network lookup, which needs identity (name/region/character id).
+        self.current_opponents = []
 
     def poll_once(self):
         data = self._fetch_game_state()
@@ -56,6 +62,7 @@ class GamePoller:
             return
 
         close_all_overlays()
+        self.current_opponents = []
         logger.info(f"New game detected: {self.previous_state}")
 
         my_team, opp_team = self._split_teams(players)
@@ -150,6 +157,7 @@ class GamePoller:
             logger.warning(f"Could not look up {opp.name}: {e}")
             return
 
+        self.current_opponents = [stats]
         self._show_opponent_history(
             stats, opp, self.config.preferences.overlay_player_log_1
         )
@@ -199,6 +207,7 @@ class GamePoller:
             logger.warning("Could not find any records for one or more opponents.")
             return
 
+        self.current_opponents = [opp1_stats, opp2_stats]
         ps1 = PlayerAnalysis.from_player_stats(opp1_stats, player=opp1)
         ps2 = PlayerAnalysis.from_player_stats(opp2_stats, player=opp2)
 
@@ -248,6 +257,7 @@ class GamePoller:
             logger.warning("Could not find any records for one or more opponents.")
             return
 
+        self.current_opponents = list(opp_stats)
         try:
             self.team_analysis = TeamAnalysis.from_players_stats(player_stats=opp_stats)
             self.team_analysis.show_overlay(
@@ -260,16 +270,70 @@ class GamePoller:
             logger.warning(f"No team found for {opp_stats}")
 
 
+class _F2Bridge(QObject):
+    """Marshals Ctrl+F2 results from the keyboard thread onto the Qt thread.
+
+    The ``keyboard`` callback runs in the library's listener thread, but Qt
+    widgets must be built on the Qt thread. The callback does its network work
+    in its own thread, then emits ``ready`` (a queued cross-thread connection),
+    so ``_render`` builds the overlay safely on the Qt thread.
+    """
+
+    ready = Signal(object, object)  # (list[ExternalIntel], OverlayPreferences)
+
+    def __init__(self):
+        super().__init__()
+        self.ready.connect(self._render)
+
+    def _render(self, intels, prefs):
+        external_intel.render_overlay(intels, prefs)
+
+
 def main(url:str, config_file_path: str):
     app = QApplication([])
     signal.signal(signal.SIGINT, lambda *_: app.quit())
     poller = GamePoller(url, config_file_path)
 
+    integrations = poller.config.integrations
+    if integrations and integrations.aligulac:
+        cross_network.set_aligulac_api_key(integrations.aligulac.api_key)
+
+    bridge = _F2Bridge()
+    f2_lock = threading.Lock()
+
     def on_ctrl_f1():
         one_tone_chime()
         poller.previous_state = "{}"
 
+    def on_ctrl_f2():
+        # Skip if a previous F2 lookup is still in flight (guards against spam).
+        if not f2_lock.acquire(blocking=False):
+            return
+        try:
+            one_tone_chime()
+            opponents = list(poller.current_opponents)
+            if not opponents:
+                logger.info("Ctrl+F2: no current opponent to look up.")
+                return
+
+            prefs = poller.config.preferences.overlay_external
+            intels = []
+            for stats in opponents:
+                try:
+                    intel = ExternalIntel.gather(stats)
+                except Exception as exc:  # never let the hotkey thread die
+                    logger.warning(f"Ctrl+F2 lookup failed: {exc}")
+                    intel = None
+                if intel is not None:
+                    intels.append(intel)
+
+            if intels:
+                bridge.ready.emit(intels, prefs)
+        finally:
+            f2_lock.release()
+
     keyboard.add_hotkey("ctrl+f1", on_ctrl_f1)
+    keyboard.add_hotkey("ctrl+f2", on_ctrl_f2)
 
     timer = QTimer()
     timer.timeout.connect(poller.poll_once)
@@ -279,4 +343,5 @@ def main(url:str, config_file_path: str):
 
     keyboard.unhook_all()
     sc2pulse.close()
+    cross_network.close()
     sys.exit(exit_code)
