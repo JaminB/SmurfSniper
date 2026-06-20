@@ -159,6 +159,18 @@ _streams_cache: Optional[list] = None
 _streams_fetched_at = 0.0
 
 
+@lru_cache(maxsize=256)
+def pro_player(pro_player_id: int) -> Optional[dict]:
+    """Full pro bio + external links via /entities?proPlayerId.
+
+    Returns the first ``proPlayers`` entry ({proPlayer, proTeam, links}) or
+    None. Cached per id (bio changes rarely).
+    """
+    data = _get("/entities", {"proPlayerId": pro_player_id})
+    entries = data.get("proPlayers") if isinstance(data, dict) else None
+    return entries[0] if entries else None
+
+
 def streams(limit: int = 100) -> list:
     """Currently-live identified SC2 streams. Returns the ``streams`` list.
 

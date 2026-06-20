@@ -42,6 +42,7 @@ class PlayerStats(BaseModel):
     _match_history_cache: Optional[TeamHistory] = None
     _social_links_cache: Optional[Dict[str, str]] = None
     _recent_matches_cache: Optional[Dict[int, List[RecentMatch]]] = None
+    _pro_details_cache: Optional[Dict] = None
 
     @property
     def is_pro(self) -> bool:
@@ -49,10 +50,34 @@ class PlayerStats(BaseModel):
 
     @property
     def aligulac_id(self) -> Optional[int]:
+        details = self.pro_details()
+        if details:
+            aid = (details.get("proPlayer") or {}).get("aligulacId")
+            if aid is not None:
+                return aid
         pp = self.members.proPlayer
         if not pp:
             return None
         return (pp.get("proPlayer") or {}).get("aligulacId")
+
+    def pro_details(self) -> Optional[dict]:
+        """Full pro bio + external links (country, earnings, Aligulac, Twitch...).
+
+        Lazily fetched from SC2Pulse /entities for revealed pros only; cached.
+        The embedded /characters proPlayer is stripped of bio, so this is the
+        source for country/earnings/real name/links.
+        """
+        pro_id = self.members.proId
+        if pro_id is None:
+            return None
+        if self._pro_details_cache is not None:
+            return self._pro_details_cache or None
+        try:
+            entry = sc2pulse.pro_player(pro_id)
+        except sc2pulse.SC2PulseError:
+            entry = None
+        self._pro_details_cache = entry or {}
+        return entry
 
     def social_links(self) -> Dict[str, str]:
         """External links (Twitch, sc2replaystats, battle.net) for this player.

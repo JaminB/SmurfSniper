@@ -300,11 +300,50 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return f"👑 {m.proNickname}{team}"
 
     @property
+    def pro_links(self) -> Dict[str, str]:
+        """External links for a revealed pro: {ALIGULAC, TWITCH, LIQUIPEDIA, ...}."""
+        details = self.player_stats.pro_details()
+        if not details:
+            return {}
+        return {
+            link["type"]: link["url"]
+            for link in details.get("links", [])
+            if link.get("type") and link.get("url")
+        }
+
+    @property
     def pro_twitch(self) -> Optional[str]:
         """Twitch URL for a revealed pro (lazy fetch; pros only)."""
+        return self.pro_links.get("TWITCH")
+
+    @property
+    def pro_country(self) -> Optional[str]:
+        details = self.player_stats.pro_details()
+        return (details.get("proPlayer") or {}).get("country") if details else None
+
+    @property
+    def pro_earnings(self) -> Optional[int]:
+        details = self.player_stats.pro_details()
+        return (details.get("proPlayer") or {}).get("earnings") if details else None
+
+    @property
+    def pro_real_name(self) -> Optional[str]:
+        details = self.player_stats.pro_details()
+        return (details.get("proPlayer") or {}).get("name") if details else None
+
+    @property
+    def pro_bio(self) -> Optional[str]:
+        """Compact pro bio line: country, real name, earnings."""
         if not self.player_stats.is_pro:
             return None
-        return self.player_stats.social_links().get("TWITCH")
+        parts: List[str] = []
+        if self.pro_country:
+            parts.append(self.pro_country)
+        if self.pro_real_name:
+            parts.append(self.pro_real_name)
+        if self.pro_earnings:
+            parts.append(f"${self.pro_earnings:,}")
+        return " · ".join(parts) or None
 
     @property
     def recent_matches(self) -> List[RecentMatch]:
@@ -475,6 +514,8 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
             "Current MMR": self.current_mmr,
             "Trend": self.mmr_trend,
             "Pro": self.pro_identity,
+            "Pro Bio": self.pro_bio,
+            "Pro Links": self.pro_links,
             "Smurf Warning": self.smurf_warning,
             "Smurf Score": self.smurf_score,
             "Smurf Reasons": self.smurf_reasons,
@@ -531,6 +572,8 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         ]
         if summary.get("Pro"):
             rows.insert(1, summary["Pro"])
+            if summary.get("Pro Bio"):
+                rows.insert(2, summary["Pro Bio"])
         if summary.get("Context"):
             rows.append(summary["Context"])
         if summary.get("Real Record"):
@@ -574,6 +617,8 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         ]
         if s.get("Pro"):
             lines.insert(1, s["Pro"])
+            if s.get("Pro Bio"):
+                lines.insert(2, s["Pro Bio"])
         if s.get("Context"):
             lines.append(s["Context"])
         if s.get("Real Record"):
