@@ -176,26 +176,27 @@ class ExternalIntel:
     def gather(cls, stats: PlayerStats) -> "ExternalIntel":
         """Build the scouting profile. Network calls run here, off the Qt thread.
 
-        The behavioral profile is always computed (own match data). External web
-        sources (Aligulac / Liquipedia / handle URLs) are gathered only when the
-        handle is distinctive enough; Twitch-live matches by character id so it
-        always runs.
+        The behavioral profile is always computed (own match data). Precise
+        external lookups — Aligulac (exact tag), Liquipedia (exact title) and
+        Twitch-live (character id) — always run since they self-filter to the
+        right player. Only the name-based handle-URL guessing is gated behind
+        the distinctiveness check, which exists to avoid resolving common
+        handles that belong to unrelated people.
         """
         char = stats.members.character
         name = char.name
 
         behavior = BehaviorProfile.from_stats(stats)
         twitch = cross_network.twitch_live(char.id)
+        aligulac = cross_network.aligulac_player(name)
+        liquipedia = cross_network.liquipedia_page(name)
 
-        aligulac = liquipedia = None
         handle_urls: Dict[str, str] = {}
         if cross_network.is_distinctive_name(name):
-            logger.info(f"Ctrl+F2: gathering cross-network intel for {name!r}.")
-            aligulac = cross_network.aligulac_player(name)
-            liquipedia = cross_network.liquipedia_page(name)
+            logger.info(f"Ctrl+F2: resolving handle URLs for {name!r}.")
             handle_urls = cross_network.resolved_handle_urls(name)
         else:
-            logger.info(f"Ctrl+F2: {name!r} not distinctive — web lookup skipped.")
+            logger.info(f"Ctrl+F2: {name!r} not distinctive — handle URLs skipped.")
 
         return cls(
             name=name,

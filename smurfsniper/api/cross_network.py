@@ -203,12 +203,12 @@ def liquipedia_page(name: str) -> Optional[Tuple[str, str]]:
     if not (isinstance(data, list) and len(data) >= 4):
         return None
     titles, urls = data[1], data[3]
+    # Exact title match only: this lookup is no longer behind the
+    # distinctiveness gate, so a loose first-hit fallback would attach wrong
+    # wiki pages to common names.
     for title, url in zip(titles, urls):
         if title and url and title.strip().casefold() == base:
             return title, url
-    # fall back to first hit if no exact title match
-    if titles and urls:
-        return titles[0], urls[0]
     return None
 
 
