@@ -7,6 +7,7 @@ from pydantic import BaseModel, PrivateAttr
 from PySide6.QtCore import QTimer
 
 from smurfsniper.analyze import BaseAnalysis
+from smurfsniper.api import sc2pulse
 from smurfsniper.enums import League, RaceCode, TeamFormat
 from smurfsniper.models.match import (
     RecentMatch,
@@ -180,6 +181,80 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         beaten = team.globalTeamCount - team.globalRank
         return round(100 * beaten / team.globalTeamCount, 1)
 
+    def _tier_band(self) -> Optional[tuple[int, int, int]]:
+        """(tier_index, lo, hi) MMR band for the player's current 1v1 league.
+
+        tier_index 0 = highest band in the league. None when data is missing
+        or the league is rank-based (Grandmaster).
+        """
+        team = self._latest_team
+        mmr = self.current_mmr
+        if team is None or mmr is None:
+            return None
+        region = self.player_stats.members.character.region
+        try:
+            season = sc2pulse.current_season()
+            thresholds = sc2pulse.tier_thresholds(
+                "LOTV_1V1", "ARRANGED", season, region
+            )
+        except sc2pulse.SC2PulseError:
+            return None
+
+        bands = thresholds.get(region, {}).get(str(team.leagueType), {})
+        for tier_str, bound in bands.items():
+            lo, hi = bound[0], bound[1]
+            if hi and lo <= mmr < hi:
+                return int(tier_str), lo, hi
+        return None
+
+    @property
+    def tier_label(self) -> Optional[str]:
+        """Exact league + tier, e.g. 'Diamond 1' (1 = top tier of the league)."""
+        league = self.current_league
+        if not league:
+            return None
+        band = self._tier_band()
+        if band is None:
+            return league.title()
+        return f"{league.title()} {band[0] + 1}"
+
+    @property
+    def mmr_to_promotion(self) -> Optional[int]:
+        """MMR needed to reach the next tier up (top of the current band)."""
+        band = self._tier_band()
+        if band is None or self.current_mmr is None:
+            return None
+        return max(band[2] - self.current_mmr, 0)
+
+    @property
+    def live_stream(self) -> Optional[dict]:
+        """The player's currently-live stream record, or None.
+
+        Only revealed pros/streamers (those with a proId) are checked, so
+        non-pros never trigger the /streams request.
+        """
+        pro_id = self.player_stats.members.proId
+        if pro_id is None:
+            return None
+        try:
+            live = sc2pulse.streams()
+        except sc2pulse.SC2PulseError:
+            return None
+        for entry in live:
+            pp = (entry.get("proPlayer") or {}).get("proPlayer") or {}
+            if pp.get("id") == pro_id:
+                return entry.get("stream")
+        return None
+
+    @property
+    def live_stream_label(self) -> Optional[str]:
+        stream = self.live_stream
+        if not stream:
+            return None
+        viewers = stream.get("viewerCount")
+        v = f" {viewers} viewers" if viewers is not None else ""
+        return f"🔴 LIVE{v}"
+
     @property
     def clan_info(self) -> Optional[str]:
         """Clan tag + average rating, e.g. '[BASKGG] avg 5950'."""
@@ -194,6 +269,12 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
     def context_line(self) -> Optional[str]:
         """One-line digest of notable secondary signals (only what stands out)."""
         parts: List[str] = []
+        if self.live_stream_label:
+            parts.append(self.live_stream_label)
+        tier = self.tier_label
+        if tier:
+            promo = self.mmr_to_promotion
+            parts.append(f"{tier}" + (f" (+{promo} to promo)" if promo else ""))
         if self.is_off_racing:
             parts.append(f"OFF-RACE (main {self.most_played_race})")
         cs = self.current_streak
@@ -400,6 +481,9 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
             "Activity (games/day)": self.activity_rate,
             "Peak Gap": self.peak_gap,
             "Current League": self.current_league,
+            "Tier": self.tier_label,
+            "MMR to Promotion": self.mmr_to_promotion,
+            "Live Stream": self.live_stream_label,
             "Better Than (%)": self.rank_percentile,
             "Current Streak": self.current_streak,
             "Longest Win Streak": self.longest_win_streak,
