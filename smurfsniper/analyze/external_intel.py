@@ -31,7 +31,11 @@ from smurfsniper.models.match import (
     map_records,
 )
 from smurfsniper.models.player import PlayerStats
+from smurfsniper.ui.overlay_manager import close_all_overlays
 from smurfsniper.ui.overlays import Overlay
+
+# Shown on the main game overlay when an opponent has a cross-network footprint.
+HINT_TEXT = "🔎 Press Ctrl+F2 for cross-network intel on this opponent"
 
 _BARS = "▁▂▃▄▅▆▇█"
 
@@ -160,6 +164,14 @@ class ExternalIntel:
     twitch_live: Optional[dict] = None
     handle_urls: Dict[str, str] = field(default_factory=dict)
 
+    @property
+    def has_external_footprint(self) -> bool:
+        """True if any *external* source resolved (web/stream), excluding the
+        behavioral profile, which is derived from in-game data and always set."""
+        return bool(
+            self.aligulac or self.liquipedia or self.twitch_live or self.handle_urls
+        )
+
     @classmethod
     def gather(cls, stats: PlayerStats) -> "ExternalIntel":
         """Build the scouting profile. Network calls run here, off the Qt thread.
@@ -235,12 +247,33 @@ class ExternalIntel:
         return "\n".join(lines)
 
 
+def show_hint_overlay(prefs: OverlayPreferences) -> None:
+    """Small persistent hint on the main overlay: details available via Ctrl+F2.
+
+    Must run on the Qt thread (called from the poll loop).
+    """
+    ov = Overlay(prefs.seconds_visible)
+    ov.position = prefs.position
+    ov.add_row([HINT_TEXT], style=Overlay.TM_STYLE, spacing=12)
+
+    delay = prefs.seconds_delay_before_show
+    if delay <= 0:
+        ov.show()
+        return
+    QTimer.singleShot(int(delay * 1000), ov.show)
+
+
 def render_overlay(
     intels: List[ExternalIntel], prefs: OverlayPreferences
 ) -> None:
-    """Build and show the scouting overlay. Must run on the Qt thread."""
+    """Build and show the scouting overlay. Must run on the Qt thread.
+
+    Opening the F2 overlay closes any overlays currently on screen first.
+    """
     if not intels:
         return
+
+    close_all_overlays()
 
     ov = Overlay(prefs.seconds_visible)
     ov.position = prefs.position

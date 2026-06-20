@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QApplication
 
 from smurfsniper.api import cross_network, sc2pulse
 from smurfsniper.api.sc2pulse import SC2PulseError
-from smurfsniper.sounds import one_tone_chime, two_tone_chime
+from smurfsniper.sounds import footprint_chime, one_tone_chime, two_tone_chime
 from smurfsniper.analyze import external_intel
 from smurfsniper.analyze.external_intel import ExternalIntel
 from smurfsniper.analyze.player_logs import PlayerLogAnalysis
@@ -44,6 +44,8 @@ class GamePoller:
         # Raw PlayerStats for the current opponent(s); used by the Ctrl+F2
         # cross-network lookup, which needs identity (name/region/character id).
         self.current_opponents = []
+        # Cross-network intel gathered once at game start; reused by Ctrl+F2.
+        self.current_intel = []
 
     def poll_once(self):
         data = self._fetch_game_state()
@@ -63,6 +65,7 @@ class GamePoller:
 
         close_all_overlays()
         self.current_opponents = []
+        self.current_intel = []
         logger.info(f"New game detected: {self.previous_state}")
 
         my_team, opp_team = self._split_teams(players)
@@ -102,6 +105,7 @@ class GamePoller:
         logger.info("Game ended")
         close_all_overlays()
         self.current_opponents = []
+        self.current_intel = []
 
         me = self.config.me
         teammates = set(self.config.team.members)
@@ -176,6 +180,26 @@ class GamePoller:
             delay_seconds=self.config.preferences.overlay_1v1.seconds_delay_before_show,
         )
 
+        self._scout_and_hint()
+
+    def _scout_and_hint(self):
+        """Gather cross-network intel for the current opponents once, cache it
+        for Ctrl+F2, and if any opponent has an external footprint play a
+        distinct chime and hint that details are available via Ctrl+F2."""
+        intel = []
+        for stats in self.current_opponents:
+            try:
+                intel.append(ExternalIntel.gather(stats))
+            except Exception as e:  # never break the game flow on a lookup
+                logger.warning(f"Cross-network scout failed: {e}")
+        self.current_intel = intel
+
+        if any(i.has_external_footprint for i in intel):
+            footprint_chime()
+            external_intel.show_hint_overlay(
+                self.config.preferences.overlay_external
+            )
+
     def _show_opponent_history(
         self, stats, opp, overlay_preferences: OverlayPreferences
     ):
@@ -243,6 +267,8 @@ class GamePoller:
         except NoTeamFound:
             logger.warning(f"No team found for {opp1.name}, {opp2.name}")
 
+        self._scout_and_hint()
+
     def _handle_team_game(self, opp_team):
         self.mode = TeamFormat._3V3 if len(opp_team) == 3 else TeamFormat._4V4
 
@@ -269,6 +295,8 @@ class GamePoller:
             )
         except NoTeamFound:
             logger.warning(f"No team found for {opp_stats}")
+
+        self._scout_and_hint()
 
 
 class _F2Bridge(QObject):
@@ -312,21 +340,21 @@ def main(url:str, config_file_path: str):
             return
         try:
             one_tone_chime()
-            opponents = list(poller.current_opponents)
-            if not opponents:
-                logger.info("Ctrl+F2: no current opponent to look up.")
-                return
-
             prefs = poller.config.preferences.overlay_external
-            intels = []
-            for stats in opponents:
-                try:
-                    intel = ExternalIntel.gather(stats)
-                except Exception as exc:  # never let the hotkey thread die
-                    logger.warning(f"Ctrl+F2 lookup failed: {exc}")
-                    intel = None
-                if intel is not None:
-                    intels.append(intel)
+
+            # Reuse intel already gathered at game start; only fetch on demand
+            # if a game is active but the scout has not run yet.
+            intels = list(poller.current_intel)
+            if not intels:
+                opponents = list(poller.current_opponents)
+                if not opponents:
+                    logger.info("Ctrl+F2: no current opponent to look up.")
+                    return
+                for stats in opponents:
+                    try:
+                        intels.append(ExternalIntel.gather(stats))
+                    except Exception as exc:  # never let the hotkey thread die
+                        logger.warning(f"Ctrl+F2 lookup failed: {exc}")
 
             if intels:
                 bridge.ready.emit(intels, prefs)

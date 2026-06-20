@@ -75,5 +75,36 @@ def two_tone_chime():
     winsound.PlaySound(str(wav_path), winsound.SND_FILENAME)
 
 
+def footprint_chime():
+    """A distinct three-tone rising arpeggio: opponent has a cross-network
+    footprint worth checking with Ctrl+F2."""
+    temp_dir = Path(tempfile.gettempdir())
+    wav_path = temp_dir / "footprint_chime.wav"
+
+    if wav_path.exists():
+        wav_path.unlink()
+
+    tones = [587.33, 880.0, 1174.66]  # D5 · A5 · D6 rising arpeggio
+    duration = 0.13
+
+    # First tone establishes the file params; later tones are appended.
+    with wave.open(str(wav_path), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(44100)
+        write_tone(wav, tones[0], duration, volume=0.34)
+
+    for tone in tones[1:]:
+        with wave.open(str(wav_path), "rb") as rf:
+            params = rf.getparams()
+            frames = rf.readframes(rf.getnframes())
+        with wave.open(str(wav_path), "wb") as wav:
+            wav.setparams(params)
+            wav.writeframes(frames)  # previous tones
+            write_tone(wav, tone, duration, volume=0.34)
+
+    winsound.PlaySound(str(wav_path), winsound.SND_FILENAME)
+
+
 if __name__ == "__main__":
-    two_tone_chime()
+    footprint_chime()
