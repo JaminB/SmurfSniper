@@ -1,9 +1,9 @@
 from typing import Dict, List, Optional
 
-import httpx
 from pydantic import BaseModel
 
-from smurfsniper.models.team_history import TeamHistory, TeamHistoryPoint
+from smurfsniper.api import sc2pulse
+from smurfsniper.models.team_history import TeamHistory
 
 
 class TeamLeague(BaseModel):
@@ -185,47 +185,8 @@ class Team(BaseModel):
         if not self.legacyUid:
             return None
 
-        url = (
-            "https://sc2pulse.nephest.com/sc2/api/team-histories?"
-            f"teamLegacyUid={self.legacyUid}"
-            "&groupBy=LEGACY_UID"
-            "&static=LEGACY_ID"
-            "&history=TIMESTAMP"
-            "&history=RATING"
-        )
-
-        with httpx.Client(timeout=10.0) as client:
-            r = client.get(url)
-            r.raise_for_status()
-            data = r.json()
-
-        merged_points: List[TeamHistoryPoint] = []
-
-        for entry in data:
-            history = entry.get("history", {})
-            timestamps = history.get("TIMESTAMP", [])
-            ratings = history.get("RATING", [])
-
-            for ts, rating in zip(timestamps, ratings):
-                merged_points.append(TeamHistoryPoint.from_raw(ts, rating))
-
-        if not merged_points:
-            return None
-
-        merged_points.sort(key=lambda p: p.timestamp)
-
-        deduped: List[TeamHistoryPoint] = []
-        last_ts = None
-        for p in merged_points:
-            if p.timestamp != last_ts:
-                deduped.append(p)
-                last_ts = p.timestamp
-
-        history = TeamHistory(
-            legacy_uid=self.legacyUid,
-            timestamps=[p.timestamp for p in deduped],
-            ratings=[p.rating for p in deduped],
-        )
+        data = sc2pulse.team_histories([self.legacyUid])
+        history = sc2pulse.parse_team_history(data, legacy_uid=self.legacyUid)
 
         self._match_history_cache = history
         return history

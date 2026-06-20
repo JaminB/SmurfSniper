@@ -1,14 +1,14 @@
 from datetime import datetime
 from typing import Dict, List, Optional, Set
 
-import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
+from smurfsniper.api import sc2pulse
 from smurfsniper.enums import League, Region, TeamFormat, TeamType
 from smurfsniper.logger import logger
 from smurfsniper.models.character import Character
 from smurfsniper.models.shared import CurrentStats, PreviousStats
-from smurfsniper.models.team_history import TeamHistory, TeamHistoryPoint
+from smurfsniper.models.team_history import TeamHistory
 from smurfsniper.utils import create_team_legacy_uid
 
 
@@ -46,52 +46,16 @@ class PlayerStats(BaseModel):
         if self._match_history_cache is not None:
             return self._match_history_cache
 
-        # collect all UIDs
-        urls: Set[str] = set()
-        for team in self.members.character.teams:
-            if team.legacyUid:
-                urls.add(f"teamLegacyUid={team.legacyUid}")
-
-        if not urls:
+        uids: Set[str] = {
+            team.legacyUid
+            for team in self.members.character.teams
+            if team.legacyUid
+        }
+        if not uids:
             return None
 
-        url = (
-            "https://sc2pulse.nephest.com/sc2/api/team-histories?"
-            + "&".join(list(urls)[:10])
-            + "&groupBy=LEGACY_UID&static=LEGACY_ID&history=TIMESTAMP&history=RATING"
-        )
-
-        with httpx.Client(timeout=10.0) as client:
-            r = client.get(url)
-            r.raise_for_status()
-            data = r.json()
-
-        merged_points: List[TeamHistoryPoint] = []
-
-        for entry in data:
-            history = entry.get("history", {})
-            timestamps = history.get("TIMESTAMP", [])
-            ratings = history.get("RATING", [])
-            for ts, rating in zip(timestamps, ratings):
-                merged_points.append(TeamHistoryPoint.from_raw(ts, rating))
-
-        if not merged_points:
-            return None
-
-        merged_points.sort(key=lambda p: p.timestamp)
-
-        deduped: List[TeamHistoryPoint] = []
-        last_ts = None
-        for p in merged_points:
-            if p.timestamp != last_ts:
-                deduped.append(p)
-                last_ts = p.timestamp
-
-        history = TeamHistory(
-            legacy_uid="merged",
-            timestamps=[p.timestamp for p in deduped],
-            ratings=[p.rating for p in deduped],
-        )
+        data = sc2pulse.team_histories(sorted(uids))
+        history = sc2pulse.parse_team_history(data, legacy_uid="merged")
 
         self._match_history_cache = history
         return history
@@ -135,17 +99,23 @@ class Player(BaseModel):
         )
 
     def matches(self) -> List[PlayerStats]:
-        url = f"https://sc2pulse.nephest.com/sc2/api/characters?query={self.name}"
+        data = sc2pulse.search_characters(self.name)
 
-        with httpx.Client(timeout=25.0) as client:
-            r = client.get(url)
-            r.raise_for_status()
-            data = r.json()
-
-        return [PlayerStats.model_validate(entry) for entry in data]
+        results: List[PlayerStats] = []
+        skipped = 0
+        for entry in data:
+            try:
+                results.append(PlayerStats.model_validate(entry))
+            except ValidationError:
+                skipped += 1
+        if skipped:
+            logger.debug(f"Skipped {skipped} unparseable candidate(s) for {self.name}")
+        return results
 
     def get_player_stats(self, min_mmr: int = 0, max_mmr: int = 5000) -> PlayerStats:
         candidates = self.matches()
+        if not candidates:
+            raise sc2pulse.SC2PulseNotFound(f"No SC2Pulse records for {self.name}")
 
         filtered = [
             c
