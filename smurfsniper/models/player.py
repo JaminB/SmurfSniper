@@ -2,11 +2,12 @@ from datetime import datetime
 from typing import Dict, List, Optional, Set
 
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from smurfsniper.enums import League, Region, TeamFormat, TeamType
 from smurfsniper.logger import logger
 from smurfsniper.models.character import Character
+from smurfsniper.models.match import RecentMatch
 from smurfsniper.models.shared import CurrentStats, PreviousStats
 from smurfsniper.models.team_history import TeamHistory, TeamHistoryPoint
 from smurfsniper.utils import create_team_legacy_uid
@@ -23,6 +24,12 @@ class Members(BaseModel):
     clan: Optional[Dict] = None
     raceGames: Dict[str, int]
 
+    # Pro/streamer reveal — embedded in the /characters response by SC2Pulse.
+    proId: Optional[int] = None
+    proNickname: Optional[str] = None
+    proTeam: Optional[str] = None
+    proPlayer: Optional[Dict] = None
+
 
 class PlayerStats(BaseModel):
     leagueMax: int
@@ -34,6 +41,80 @@ class PlayerStats(BaseModel):
     members: Members
 
     _match_history_cache: Optional[TeamHistory] = None
+    _social_links_cache: Optional[Dict[str, str]] = None
+    _recent_matches_cache: Optional[List[RecentMatch]] = None
+
+    @property
+    def is_pro(self) -> bool:
+        return self.members.proNickname is not None
+
+    @property
+    def aligulac_id(self) -> Optional[int]:
+        pp = self.members.proPlayer
+        if not pp:
+            return None
+        return (pp.get("proPlayer") or {}).get("aligulacId")
+
+    def social_links(self) -> Dict[str, str]:
+        """External links (Twitch, sc2replaystats, battle.net) for this player.
+
+        Lazily fetched from SC2Pulse /character-links. Only worth calling for
+        revealed pros/streamers; cached after the first call.
+        """
+        if self._social_links_cache is not None:
+            return self._social_links_cache
+
+        url = (
+            "https://sc2pulse.nephest.com/sc2/api/character-links"
+            f"?characterId={self.members.character.id}"
+        )
+        links: Dict[str, str] = {}
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                r = client.get(url)
+                r.raise_for_status()
+                data = r.json()
+            for entry in data:
+                for link in entry.get("links", []):
+                    link_type = link.get("type")
+                    url_value = link.get("absoluteUrl")
+                    if link_type and url_value:
+                        links[link_type] = url_value
+        except httpx.HTTPError as exc:
+            logger.warning(f"Failed to fetch character-links: {exc}")
+
+        self._social_links_cache = links
+        return links
+
+    def recent_matches(self, limit: int = 25) -> List[RecentMatch]:
+        """Real recent matches (map, duration, decision, opponent) for this player.
+
+        Lazily fetched from SC2Pulse /character-matches and cached. SC2Pulse only
+        retains match history for tracked characters, so this is often empty.
+        """
+        if self._recent_matches_cache is not None:
+            return self._recent_matches_cache
+
+        char_id = self.members.character.id
+        url = (
+            "https://sc2pulse.nephest.com/sc2/api/character-matches"
+            f"?characterId={char_id}&limit={limit}"
+        )
+        matches: List[RecentMatch] = []
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                r = client.get(url)
+                r.raise_for_status()
+                data = r.json()
+            for entry in data.get("result", []):
+                parsed = RecentMatch.from_raw(entry, char_id)
+                if parsed is not None:
+                    matches.append(parsed)
+        except httpx.HTTPError as exc:
+            logger.warning(f"Failed to fetch character-matches: {exc}")
+
+        self._recent_matches_cache = matches
+        return matches
 
     @property
     def max_league(self) -> str:
@@ -142,7 +223,15 @@ class Player(BaseModel):
             r.raise_for_status()
             data = r.json()
 
-        return [PlayerStats.model_validate(entry) for entry in data]
+        results: List[PlayerStats] = []
+        for entry in data:
+            try:
+                results.append(PlayerStats.model_validate(entry))
+            except ValidationError:
+                # SC2Pulse returns some candidates with null core stats
+                # (e.g. leagueMax/ratingMax). Skip those rather than crash.
+                continue
+        return results
 
     def get_player_stats(self, min_mmr: int = 0, max_mmr: int = 5000) -> PlayerStats:
         candidates = self.matches()

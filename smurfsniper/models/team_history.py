@@ -132,6 +132,25 @@ class TeamHistory(BaseModel):
     def last_game_played(self) -> Optional[datetime]:
         return max(self.timestamps)
 
+    @property
+    def account_age_days(self) -> int:
+        """Days between the first recorded game and now (0 if no history)."""
+        first = self.first_game_played
+        if not first:
+            return 0
+        return max((datetime.utcnow() - first).days, 0)
+
+    @property
+    def mmr_climb_velocity(self) -> float:
+        """Average MMR gained per day from first to most recent rating.
+
+        Positive = climbing. A fast climb on a low account is a smurf signal.
+        """
+        if len(self.ratings) < 2:
+            return 0.0
+        days = max(self.account_age_days, 1)
+        return (self.ratings[-1] - self.ratings[0]) / days
+
     def sparkline(self, days: int = 30) -> str:
         if not self.timestamps or not self.ratings:
             return "(no data)"

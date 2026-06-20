@@ -8,6 +8,12 @@ from PySide6.QtCore import QTimer
 
 from smurfsniper.analyze import BaseAnalysis
 from smurfsniper.enums import League, RaceCode
+from smurfsniper.models.match import (
+    RecentMatch,
+    avg_duration_seconds,
+    ladder_only,
+    map_records,
+)
 from smurfsniper.models.player import Player, PlayerStats
 from smurfsniper.ui.overlays import Overlay
 from smurfsniper.utils import human_friendly_duration
@@ -112,6 +118,57 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return self.player_stats.totalGamesPlayed
 
     @property
+    def pro_identity(self) -> Optional[str]:
+        """Revealed pro/streamer name + team, e.g. '👑 Serral [BSLSK]'."""
+        m = self.player_stats.members
+        if not m.proNickname:
+            return None
+        team = f" [{m.proTeam}]" if m.proTeam else ""
+        return f"👑 {m.proNickname}{team}"
+
+    @property
+    def pro_twitch(self) -> Optional[str]:
+        """Twitch URL for a revealed pro (lazy fetch; pros only)."""
+        if not self.player_stats.is_pro:
+            return None
+        return self.player_stats.social_links().get("TWITCH")
+
+    @property
+    def recent_matches(self) -> List[RecentMatch]:
+        """Recent ranked-ladder matches (CUSTOM / co-op excluded)."""
+        return ladder_only(self.player_stats.recent_matches())
+
+    @property
+    def map_records(self) -> Dict[str, tuple[int, int]]:
+        return map_records(self.recent_matches)
+
+    @property
+    def avg_game_duration(self) -> Optional[int]:
+        return avg_duration_seconds(self.recent_matches)
+
+    @property
+    def real_record(self) -> Optional[str]:
+        """Win/loss from real match history (more exact than MMR-delta inference).
+
+        Returns None when SC2Pulse has no tracked matches for this player.
+        """
+        matches = self.recent_matches
+        if not matches:
+            return None
+        wins = sum(1 for m in matches if m.decision == "WIN")
+        losses = sum(1 for m in matches if m.decision == "LOSS")
+        return f"{wins}W/{losses}L (last {len(matches)})"
+
+    @property
+    def map_summary(self) -> Optional[str]:
+        """Compact per-map record string, e.g. 'Goldenaura 3-1 · Site 2-0'."""
+        records = self.map_records
+        if not records:
+            return None
+        ordered = sorted(records.items(), key=lambda kv: -(kv[1][0] + kv[1][1]))
+        return " · ".join(f"{name} {w}-{l}" for name, (w, l) in ordered[:3])
+
+    @property
     def most_played_race(self) -> str:
         races = self.player_stats.members.raceGames
         if not races:
@@ -119,25 +176,76 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         key = max(races, key=lambda r: races.get(r, 0))
         return RaceCode[key].name
 
-    @property
-    def smurf_warning(self) -> Optional[str]:
+    def _smurf_assessment(self) -> tuple[int, List[str]]:
+        """Graded smurf likelihood (0–100) with human-readable reasons.
+
+        Blends recent/lifetime winrate with account age and MMR climb velocity.
+        Each signal contributes weighted points; the total is capped at 100.
+        """
         h = self.match_history
         if not h:
-            return None
+            return 0, []
+
+        score = 0
+        reasons: List[str] = []
 
         w3, l3 = h.wins_last_3_days, h.losses_last_3_days
         if (w3 + l3) >= 5 and (w3 / (w3 + l3)) >= 0.80:
-            return "⚠️ Likely Smurf (3d winrate ≥ 80%)"
+            score += 35
+            reasons.append(f"3d winrate {w3}/{w3 + l3} ≥80%")
 
         w7, l7 = h.wins_last_week, h.losses_last_week
         if (w7 + l7) >= 8 and (w7 / (w7 + l7)) >= 0.75:
-            return "⚠️ Possible Smurf (7d winrate ≥ 75%)"
+            score += 25
+            reasons.append(f"7d winrate {w7}/{w7 + l7} ≥75%")
 
         wl, ll = h.wins_lifetime, h.losses_lifetime
         if (wl + ll) >= 30 and (wl / (wl + ll)) >= 0.70:
-            return "⚠️ Suspiciously strong lifetime winrate"
+            score += 15
+            reasons.append("lifetime winrate ≥70%")
 
-        return None
+        # Account-age and climb signals need enough history to be meaningful.
+        if len(h.ratings) >= 5:
+            age = h.account_age_days
+            if age <= 14:
+                score += 30
+                reasons.append(f"new account ({age}d)")
+            elif age <= 30:
+                score += 18
+                reasons.append(f"young account ({age}d)")
+
+            v = h.mmr_climb_velocity
+            if v >= 15:
+                score += 20
+                reasons.append(f"fast MMR climb ({v:.0f}/day)")
+            elif v >= 8:
+                score += 10
+                reasons.append(f"steady MMR climb ({v:.0f}/day)")
+
+        return min(score, 100), reasons
+
+    @property
+    def smurf_score(self) -> int:
+        return self._smurf_assessment()[0]
+
+    @property
+    def smurf_reasons(self) -> List[str]:
+        return self._smurf_assessment()[1]
+
+    @property
+    def smurf_warning(self) -> Optional[str]:
+        score, reasons = self._smurf_assessment()
+        if score >= 70:
+            label = "⚠️ Likely Smurf"
+        elif score >= 45:
+            label = "⚠️ Possible Smurf"
+        elif score >= 25:
+            label = "⚠️ Suspiciously strong"
+        else:
+            return None
+
+        detail = f" – {reasons[0]}" if reasons else ""
+        return f"{label} ({score}/100){detail}"
 
     @property
     def teammates(self) -> Dict[str, Dict[str, Optional[datetime]]]:
@@ -191,7 +299,15 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
             "Max League": self.max_league,
             "Current MMR": self.current_mmr,
             "Trend": self.mmr_trend,
+            "Pro": self.pro_identity,
             "Smurf Warning": self.smurf_warning,
+            "Smurf Score": self.smurf_score,
+            "Smurf Reasons": self.smurf_reasons,
+            "Account Age (days)": self.account_age_days,
+            "MMR Climb (per day)": round(self.mmr_climb_velocity, 1),
+            "Real Record": self.real_record,
+            "Recent Maps": self.map_summary,
+            "Avg Duration (s)": self.avg_game_duration,
             "Current Race": self.current_race,
             "Most Played Race": self.most_played_race,
             "Total Games": self.total_games,
@@ -218,13 +334,21 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
 
         smurf = f"{summary['Smurf Warning']}" if summary["Smurf Warning"] else ""
 
-        return [
+        rows = [
             f"{summary['Player']} | {summary['Max League']}",
             f"MMR {summary['Current MMR']} {trend}    {spark}",
             f"Race: {summary['Current Race']}{race_note}",
             f"First Played: {summary['Playing For']}",
             smurf,
         ]
+        if summary.get("Pro"):
+            rows.insert(1, summary["Pro"])
+        if summary.get("Real Record"):
+            line = f"Recent {summary['Real Record']}"
+            if summary.get("Recent Maps"):
+                line += f"   {summary['Recent Maps']}"
+            rows.append(line)
+        return rows
 
     def _overlay_side_panel(self, summary: dict) -> str:
         return "\n".join(_top_teammate_rows(self, limit=3, include_games=True))
@@ -251,15 +375,21 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
             f"LFT {s['Lifetime Wins']}W/{s['Lifetime Losses']}L"
         )
 
-        return "\n".join(
-            [
-                f"{s['Player']}   {league}",
-                f"MMR {s['Current MMR']} {trend}   {spark}",
-                f"Race {s['Current Race']}{race_note} {smurf}",
-                first_played,
-                perf,
-            ]
-        )
+        lines = [
+            f"{s['Player']}   {league}",
+            f"MMR {s['Current MMR']} {trend}   {spark}",
+            f"Race {s['Current Race']}{race_note} {smurf}",
+            first_played,
+            perf,
+        ]
+        if s.get("Pro"):
+            lines.insert(1, s["Pro"])
+        if s.get("Real Record"):
+            extra = f"Recent {s['Real Record']}"
+            if s.get("Recent Maps"):
+                extra += f"   {s['Recent Maps']}"
+            lines.append(extra)
+        return "\n".join(lines)
 
     def overlay_teammates_block(self) -> str:
         """Compact teammates block for overlays."""
