@@ -1,15 +1,15 @@
 from datetime import datetime
 from typing import Dict, List, Optional, Set
 
-import httpx
 from pydantic import BaseModel, ValidationError
 
+from smurfsniper.api import sc2pulse
 from smurfsniper.enums import League, Region, TeamFormat, TeamType
 from smurfsniper.logger import logger
 from smurfsniper.models.character import Character
 from smurfsniper.models.match import RecentMatch
 from smurfsniper.models.shared import CurrentStats, PreviousStats
-from smurfsniper.models.team_history import TeamHistory, TeamHistoryPoint
+from smurfsniper.models.team_history import TeamHistory
 from smurfsniper.utils import create_team_legacy_uid
 
 
@@ -64,24 +64,19 @@ class PlayerStats(BaseModel):
         if self._social_links_cache is not None:
             return self._social_links_cache
 
-        url = (
-            "https://sc2pulse.nephest.com/sc2/api/character-links"
-            f"?characterId={self.members.character.id}"
-        )
         links: Dict[str, str] = {}
         try:
-            with httpx.Client(timeout=10.0) as client:
-                r = client.get(url)
-                r.raise_for_status()
-                data = r.json()
-            for entry in data:
-                for link in entry.get("links", []):
-                    link_type = link.get("type")
-                    url_value = link.get("absoluteUrl")
-                    if link_type and url_value:
-                        links[link_type] = url_value
-        except httpx.HTTPError as exc:
+            data = sc2pulse.character_links(self.members.character.id)
+        except sc2pulse.SC2PulseError as exc:
             logger.warning(f"Failed to fetch character-links: {exc}")
+            data = []
+
+        for entry in data:
+            for link in entry.get("links", []):
+                link_type = link.get("type")
+                url_value = link.get("absoluteUrl")
+                if link_type and url_value:
+                    links[link_type] = url_value
 
         self._social_links_cache = links
         return links
@@ -96,22 +91,17 @@ class PlayerStats(BaseModel):
             return self._recent_matches_cache
 
         char_id = self.members.character.id
-        url = (
-            "https://sc2pulse.nephest.com/sc2/api/character-matches"
-            f"?characterId={char_id}&limit={limit}"
-        )
-        matches: List[RecentMatch] = []
         try:
-            with httpx.Client(timeout=10.0) as client:
-                r = client.get(url)
-                r.raise_for_status()
-                data = r.json()
-            for entry in data.get("result", []):
-                parsed = RecentMatch.from_raw(entry, char_id)
-                if parsed is not None:
-                    matches.append(parsed)
-        except httpx.HTTPError as exc:
+            data = sc2pulse.character_matches(char_id, limit=limit)
+        except sc2pulse.SC2PulseError as exc:
             logger.warning(f"Failed to fetch character-matches: {exc}")
+            data = []
+
+        matches: List[RecentMatch] = []
+        for entry in data:
+            parsed = RecentMatch.from_raw(entry, char_id)
+            if parsed is not None:
+                matches.append(parsed)
 
         self._recent_matches_cache = matches
         return matches
@@ -127,52 +117,16 @@ class PlayerStats(BaseModel):
         if self._match_history_cache is not None:
             return self._match_history_cache
 
-        # collect all UIDs
-        urls: Set[str] = set()
-        for team in self.members.character.teams:
-            if team.legacyUid:
-                urls.add(f"teamLegacyUid={team.legacyUid}")
-
-        if not urls:
+        uids: Set[str] = {
+            team.legacyUid
+            for team in self.members.character.teams
+            if team.legacyUid
+        }
+        if not uids:
             return None
 
-        url = (
-            "https://sc2pulse.nephest.com/sc2/api/team-histories?"
-            + "&".join(list(urls)[:10])
-            + "&groupBy=LEGACY_UID&static=LEGACY_ID&history=TIMESTAMP&history=RATING"
-        )
-
-        with httpx.Client(timeout=10.0) as client:
-            r = client.get(url)
-            r.raise_for_status()
-            data = r.json()
-
-        merged_points: List[TeamHistoryPoint] = []
-
-        for entry in data:
-            history = entry.get("history", {})
-            timestamps = history.get("TIMESTAMP", [])
-            ratings = history.get("RATING", [])
-            for ts, rating in zip(timestamps, ratings):
-                merged_points.append(TeamHistoryPoint.from_raw(ts, rating))
-
-        if not merged_points:
-            return None
-
-        merged_points.sort(key=lambda p: p.timestamp)
-
-        deduped: List[TeamHistoryPoint] = []
-        last_ts = None
-        for p in merged_points:
-            if p.timestamp != last_ts:
-                deduped.append(p)
-                last_ts = p.timestamp
-
-        history = TeamHistory(
-            legacy_uid="merged",
-            timestamps=[p.timestamp for p in deduped],
-            ratings=[p.rating for p in deduped],
-        )
+        data = sc2pulse.team_histories(sorted(uids))
+        history = sc2pulse.parse_team_history(data, legacy_uid="merged")
 
         self._match_history_cache = history
         return history
@@ -216,25 +170,25 @@ class Player(BaseModel):
         )
 
     def matches(self) -> List[PlayerStats]:
-        url = f"https://sc2pulse.nephest.com/sc2/api/characters?query={self.name}"
-
-        with httpx.Client(timeout=25.0) as client:
-            r = client.get(url)
-            r.raise_for_status()
-            data = r.json()
+        data = sc2pulse.search_characters(self.name)
 
         results: List[PlayerStats] = []
+        skipped = 0
         for entry in data:
             try:
                 results.append(PlayerStats.model_validate(entry))
             except ValidationError:
                 # SC2Pulse returns some candidates with null core stats
-                # (e.g. leagueMax/ratingMax). Skip those rather than crash.
-                continue
+                # (e.g. leagueMax/ratingMax). Skip rather than crash.
+                skipped += 1
+        if skipped:
+            logger.debug(f"Skipped {skipped} unparseable candidate(s) for {self.name}")
         return results
 
     def get_player_stats(self, min_mmr: int = 0, max_mmr: int = 5000) -> PlayerStats:
         candidates = self.matches()
+        if not candidates:
+            raise sc2pulse.SC2PulseNotFound(f"No SC2Pulse records for {self.name}")
 
         filtered = [
             c

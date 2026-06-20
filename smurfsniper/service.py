@@ -1,12 +1,14 @@
 import signal
 import sys
 
+import httpx
 import keyboard
-import requests
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
+from smurfsniper.api import sc2pulse
+from smurfsniper.api.sc2pulse import SC2PulseError
 from smurfsniper.sounds import one_tone_chime, two_tone_chime
 from smurfsniper.analyze.player_logs import PlayerLogAnalysis
 from smurfsniper.analyze.players import Player2v2Analysis, PlayerAnalysis
@@ -60,16 +62,19 @@ class GamePoller:
         if not opp_team:
             return
 
-        if len(opp_team) == 1:
-            self._handle_1v1(opp_team[0])
-        elif len(opp_team) == 2:
-            self._handle_2v2(opp_team)
-        else:
-            self._handle_team_game(opp_team)
+        try:
+            if len(opp_team) == 1:
+                self._handle_1v1(opp_team[0])
+            elif len(opp_team) == 2:
+                self._handle_2v2(opp_team)
+            else:
+                self._handle_team_game(opp_team)
+        except SC2PulseError as e:
+            logger.warning(f"SC2Pulse lookup failed for this game: {e}")
 
     def _fetch_game_state(self):
         try:
-            r = requests.get(self.url, timeout=5)
+            r = httpx.get(self.url, timeout=5)
             r.raise_for_status()
             return r.json()
         except Exception as e:
@@ -98,15 +103,15 @@ class GamePoller:
 
         for p in players:
             name = p.get("name")
-            if name == me or name in teammates:
+            if name == me.name or name in teammates:
                 continue
 
             player = Player(**p)
             try:
                 stats = player.get_player_stats(mmr_min, mmr_max)
-            except IndexError:
-                logger.warning("Could not find any records for one or more opponents.")
-                return
+            except (SC2PulseError, IndexError) as e:
+                logger.warning(f"Could not look up {player.name}: {e}")
+                continue
 
             most_recent = PlayerLog.most_recent()
             log = PlayerLog.from_player_stats(
@@ -125,7 +130,7 @@ class GamePoller:
         my_team, opp_team = [], []
 
         for p in players:
-            if p.get("name") == self.config.me or p.get("name") in self.config.team.members:
+            if p.get("name") == self.config.me.name or p.get("name") in self.config.team.members:
                 my_team.append(p)
             else:
                 opp_team.append(p)
@@ -136,10 +141,14 @@ class GamePoller:
         self.mode = TeamFormat._1V1
 
         opp = Player(**opp_raw)
-        stats = opp.get_player_stats(
-            min_mmr=self.config.me.mmr - 500,
-            max_mmr=self.config.me.mmr + 500,
-        )
+        try:
+            stats = opp.get_player_stats(
+                min_mmr=self.config.me.mmr - 500,
+                max_mmr=self.config.me.mmr + 500,
+            )
+        except (SC2PulseError, IndexError) as e:
+            logger.warning(f"Could not look up {opp.name}: {e}")
+            return
 
         self._show_opponent_history(
             stats, opp, self.config.preferences.overlay_player_log_1
@@ -186,7 +195,7 @@ class GamePoller:
             opp2_stats = opp2.get_player_stats(
                 self.config.me.mmr - 500, self.config.me.mmr + 500
             )
-        except IndexError:
+        except (SC2PulseError, IndexError):
             logger.warning("Could not find any records for one or more opponents.")
             return
 
@@ -235,7 +244,7 @@ class GamePoller:
                 )
                 for p in opp_team
             ]
-        except IndexError:
+        except (SC2PulseError, IndexError):
             logger.warning("Could not find any records for one or more opponents.")
             return
 
@@ -269,4 +278,5 @@ def main(url:str, config_file_path: str):
     exit_code = app.exec()
 
     keyboard.unhook_all()
+    sc2pulse.close()
     sys.exit(exit_code)
