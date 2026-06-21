@@ -33,22 +33,37 @@ class Preferences(BaseModel):
     overlay_team: OverlayPreferences
     overlay_player_log_1: OverlayPreferences
     overlay_player_log_2: OverlayPreferences
+    overlay_external: OverlayPreferences = OverlayPreferences(
+        position="top_center"
+    )
 
     @classmethod
     def from_yaml(cls, data: dict) -> "Preferences":
+        external_cfg = data.get("external_overlay") or {}
+        external = {"position": "top_center", **external_cfg}
         return cls(
             overlay_1v1=OverlayPreferences(**data["1v1_overlay"]),
             overlay_2v2=OverlayPreferences(**data["2v2_overlay"]),
             overlay_team=OverlayPreferences(**data["team_overlay"]),
             overlay_player_log_1=OverlayPreferences(**data["overlay_player_log_1"]),
             overlay_player_log_2=OverlayPreferences(**data["overlay_player_log_2"]),
+            overlay_external=OverlayPreferences(**external),
         )
+
+
+class Aligulac(BaseModel):
+    api_key: str = ""
+
+
+class Integrations(BaseModel):
+    aligulac: Optional[Aligulac] = None
 
 
 class Config(BaseModel):
     me: Me
     team: Team
     preferences: Optional[Preferences] = None
+    integrations: Optional[Integrations] = None
 
     @classmethod
     def from_config_file(cls, path: str | Path) -> "Config":
