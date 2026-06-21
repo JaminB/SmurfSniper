@@ -167,18 +167,29 @@ class ExternalIntel:
     battlenet_url: Optional[str] = None
 
     @property
+    def linked_socials(self) -> Dict[str, str]:
+        """Self-declared profile links worth showing — i.e. ``social_links``
+        minus the ``BATTLE_NET`` deep-link, which every account has and is
+        rendered separately as a clean web URL."""
+        return {
+            plat: url
+            for plat, url in self.social_links.items()
+            if plat != "BATTLE_NET" and url
+        }
+
+    @property
     def has_external_footprint(self) -> bool:
         """True if any *external* source resolved (web/stream/self-linked).
 
         Excludes the behavioral profile (in-game data, may be ``None``) and the
-        Battle.net URL (every matched account has one — it is not a discovered
+        Battle.net link (every matched account has one — it is not a discovered
         footprint, just a deterministic link)."""
         return bool(
             self.aligulac
             or self.liquipedia
             or self.twitch_live
             or self.handle_urls
-            or self.social_links
+            or self.linked_socials
         )
 
     @classmethod
@@ -254,15 +265,12 @@ class ExternalIntel:
             title, url = self.liquipedia
             lines.append(f"Liquipedia: {title}\n  {url}")
 
-        # BATTLE_NET here is a battlenet:// desktop deep-link; we render the
-        # clean web profile URL separately, so drop it from the linked list.
-        linked_items = [
-            (plat, url)
-            for plat, url in self.social_links.items()
-            if plat != "BATTLE_NET"
-        ]
-        if linked_items:
-            linked = "  ".join(f"{plat}: {url}" for plat, url in linked_items)
+        # linked_socials already drops the BATTLE_NET deep-link (rendered below
+        # as a clean web profile URL).
+        if self.linked_socials:
+            linked = "  ".join(
+                f"{plat}: {url}" for plat, url in self.linked_socials.items()
+            )
             lines.append(f"Linked: {linked}")
 
         if self.battlenet_url:
