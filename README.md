@@ -34,7 +34,15 @@
 
 ## Installation
 
-### Clone the repository
+### Download the executable (recommended)
+
+Grab the latest `smurfsniper-<version>.exe` from the
+[**Releases**](https://github.com/JaminB/smurfsniper/releases) page and run it. It is a
+self-contained Windows build — no Python install required.
+
+### From source
+
+#### Clone the repository
 
 ```bash
 git clone https://github.com/JaminB/smurfsniper.git
@@ -125,6 +133,26 @@ player_log_2:
 ```bash
 smurfsniper.exe run --config config.yaml
 ```
+
+---
+
+## Releases (maintainers)
+
+Windows builds are produced by the **Build Windows exe** GitHub Actions workflow.
+
+1. Go to **Actions → Build Windows exe → Run workflow**.
+2. Enter the **version** string (e.g. `1.2.3`). Optionally tick **prerelease**.
+3. The workflow then:
+   - embeds the version into the build and compiles a self-contained `.exe` with PyInstaller,
+   - smoke-tests the binary (`--version`),
+   - uploads the exe as a workflow artifact,
+   - creates the **`v<version>`** git tag on the triggering commit, and
+   - publishes a **GitHub Release** with auto-generated notes (a summary of the changes since
+     the previous release) and the `smurfsniper-<version>.exe` attached.
+
+The version string is the single source of truth: it is written into `smurfsniper/_version.py`
+at build time and surfaced by `smurfsniper --version`. Re-using a version that already has a
+release fails the run — bump the version instead.
 
 ---
 
