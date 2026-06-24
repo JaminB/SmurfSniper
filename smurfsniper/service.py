@@ -346,8 +346,8 @@ class _F2Bridge(QObject):
         external_intel.render_overlay(intels, prefs)
 
 
-def main(url:str, config_file_path: str):
-    app = QApplication([])
+def main(url:str, config_file_path: str, app: QApplication | None = None):
+    app = app or QApplication.instance() or QApplication([])
     signal.signal(signal.SIGINT, lambda *_: app.quit())
     poller = GamePoller(url, config_file_path)
 
