@@ -26,6 +26,15 @@ class OverlayPreferences(BaseModel):
     seconds_delay_before_show: float = 0.0
     seconds_visible: int = 30
 
+    def to_yaml_dict(self) -> dict:
+        return {
+            "visible": self.visible,
+            "orientation": self.orientation,
+            "position": self.position,
+            "seconds_delay_before_show": self.seconds_delay_before_show,
+            "seconds_visible": self.seconds_visible,
+        }
+
 
 class Preferences(BaseModel):
     overlay_1v1: OverlayPreferences
@@ -48,6 +57,28 @@ class Preferences(BaseModel):
             overlay_player_log_1=OverlayPreferences(**data["overlay_player_log_1"]),
             overlay_player_log_2=OverlayPreferences(**data["overlay_player_log_2"]),
             overlay_external=OverlayPreferences(**external),
+        )
+
+    def to_yaml_dict(self) -> dict:
+        """Inverse of from_yaml — emit the on-disk yaml key names."""
+        return {
+            "1v1_overlay": self.overlay_1v1.to_yaml_dict(),
+            "2v2_overlay": self.overlay_2v2.to_yaml_dict(),
+            "team_overlay": self.overlay_team.to_yaml_dict(),
+            "overlay_player_log_1": self.overlay_player_log_1.to_yaml_dict(),
+            "overlay_player_log_2": self.overlay_player_log_2.to_yaml_dict(),
+            "external_overlay": self.overlay_external.to_yaml_dict(),
+        }
+
+    @classmethod
+    def defaults(cls) -> "Preferences":
+        return cls(
+            overlay_1v1=OverlayPreferences(),
+            overlay_2v2=OverlayPreferences(),
+            overlay_team=OverlayPreferences(),
+            overlay_player_log_1=OverlayPreferences(),
+            overlay_player_log_2=OverlayPreferences(),
+            overlay_external=OverlayPreferences(),
         )
 
 
@@ -75,3 +106,43 @@ class Config(BaseModel):
             raw["preferences"] = Preferences.from_yaml(raw["preferences"])
 
         return cls.model_validate(raw)
+
+    @classmethod
+    def defaults(cls) -> "Config":
+        """Build a Config from schema defaults for the 'no config found' prefill."""
+        return cls(
+            me=Me(mmr=2500, name=""),
+            team=Team(name="", mmr=2500, members=[]),
+            preferences=Preferences.defaults(),
+            integrations=Integrations(aligulac=Aligulac()),
+        )
+
+    def to_yaml_dict(self) -> dict:
+        """Serialize to the on-disk yaml structure (yaml key names)."""
+        out: dict = {
+            "me": {"mmr": self.me.mmr, "name": self.me.name},
+            "team": {
+                "name": self.team.name,
+                "mmr": self.team.mmr,
+                "members": list(self.team.members),
+            },
+        }
+        if self.preferences is not None:
+            out["preferences"] = self.preferences.to_yaml_dict()
+        # Only emit integrations when there is a real key, so configs that
+        # omit the section round-trip cleanly instead of gaining an empty block.
+        if (
+            self.integrations is not None
+            and self.integrations.aligulac is not None
+            and self.integrations.aligulac.api_key
+        ):
+            out["integrations"] = {
+                "aligulac": {"api_key": self.integrations.aligulac.api_key}
+            }
+        return out
+
+    def write_config_file(self, path: str | Path) -> None:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as f:
+            yaml.safe_dump(self.to_yaml_dict(), f, sort_keys=False)

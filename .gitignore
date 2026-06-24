@@ -8,6 +8,10 @@ __pycache__/
 .venv/
 *.egg-info/
 
+# PyInstaller build artifacts (smurfsniper.spec is tracked; outputs are not)
+build/
+dist/
+
 # Logs / runtime
 logs/
 *.sqlite3
