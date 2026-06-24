@@ -1,5 +1,14 @@
 # SmurfSniper 🎯
 
+<p align="center">
+  <a href="https://buymeacoffee.com/jaminbeckes">
+    <img
+      src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black"
+      alt="Buy Me a Coffee"
+    />
+  </a>
+</p>
+
 **SmurfSniper** is a real-time **StarCraft II** overlay and analysis tool. It watches your
 matches as they start, looks up every opponent on the community **SC2Pulse** database, analyzes
 their MMR trend and win-rate history, and renders in-game overlays that flag accounts which look
