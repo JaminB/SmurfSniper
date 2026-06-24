@@ -8,11 +8,11 @@ import click
 import yaml
 
 from smurfsniper import service
+from smurfsniper._version import __version__ as VERSION
 from smurfsniper.config_paths import resolve_config
 from smurfsniper.models.config import Config, Preferences
 
 DEFAULT_URL = "http://localhost:6119/game"
-VERSION = "0.1.0"
 
 
 def load_config(path: Path) -> Dict[str, Any]:
