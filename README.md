@@ -1,12 +1,22 @@
 # SmurfSniper 🎯
 
 <p align="center">
+  <a href="https://github.com/JaminB/smurfsniper/releases/latest">
+    <img
+      src="https://img.shields.io/github/v/release/JaminB/smurfsniper?style=for-the-badge&label=Download%20.exe&logo=windows&color=2ea44f"
+      alt="Download latest release"
+    />
+  </a>
   <a href="https://buymeacoffee.com/jaminbeckes">
     <img
       src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black"
       alt="Buy Me a Coffee"
     />
   </a>
+</p>
+
+<p align="center">
+  <b><a href="https://github.com/JaminB/smurfsniper/releases/latest">⬇️ Download the latest <code>smurfsniper-&lt;version&gt;.exe</code></a></b> — no Python required.
 </p>
 
 **SmurfSniper** is a real-time **StarCraft II** overlay and analysis tool. It watches your
@@ -112,7 +122,8 @@ On demand, gather a deeper scouting profile on the current opponent(s):
 ## Installation
 
 ### Option A — Download the executable
-Grab the latest `smurfsniper-<version>.exe` from the project's releases / CI artifacts and run it.
+Grab the latest `smurfsniper-<version>.exe` from the
+[**latest release**](https://github.com/JaminB/smurfsniper/releases/latest) and run it.
 No Python install required.
 
 ### Option B — From source
