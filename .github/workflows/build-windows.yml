@@ -7,9 +7,14 @@ on:
         description: "Version string to embed in the exe (e.g. 1.2.3)"
         required: true
         type: string
+      prerelease:
+        description: "Mark the GitHub Release as a pre-release"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -54,3 +59,29 @@ jobs:
           name: smurfsniper-${{ inputs.version }}-windows
           path: dist/smurfsniper-${{ inputs.version }}.exe
           if-no-files-found: error
+
+      - name: Create tag and GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v${{ inputs.version }}"
+          $asset = "dist/smurfsniper-${{ inputs.version }}.exe"
+
+          # Fail clearly if this version was already released.
+          if (gh release view $tag 2>$null) {
+            Write-Error "Release $tag already exists. Pick a new version."
+            exit 1
+          }
+
+          # Tag the triggering commit, auto-summarize changes since the last
+          # release, and attach the exe.
+          $createArgs = @(
+            "release", "create", $tag, $asset,
+            "--title", $tag,
+            "--generate-notes",
+            "--target", "${{ github.sha }}"
+          )
+          if ("${{ inputs.prerelease }}" -eq "true") { $createArgs += "--prerelease" }
+
+          gh @createArgs

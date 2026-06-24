@@ -25,16 +25,24 @@
 
 ## Requirements
 
-- Python 3.13 or newer  
 - StarCraft II (running locally)  
 - Windows (overlay support is Windows-first)  
 - Internet access for player stat lookups  
+- Python 3.13 or newer — **only** when installing/running from source; the prebuilt `.exe` needs no Python  
 
 ---
 
 ## Installation
 
-### Clone the repository
+### Download the executable (recommended)
+
+Grab the latest `smurfsniper-<version>.exe` from the
+[**Releases**](https://github.com/JaminB/smurfsniper/releases) page and run it. It is a
+self-contained Windows build — no Python install required.
+
+### From source
+
+#### Clone the repository
 
 ```bash
 git clone https://github.com/JaminB/smurfsniper.git
