@@ -25,10 +25,10 @@
 
 ## Requirements
 
-- Python 3.13 or newer  
 - StarCraft II (running locally)  
 - Windows (overlay support is Windows-first)  
 - Internet access for player stat lookups  
+- Python 3.13 or newer — **only** when installing/running from source; the prebuilt `.exe` needs no Python  
 
 ---
 
