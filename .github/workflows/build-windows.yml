@@ -71,10 +71,9 @@ jobs:
           if-no-files-found: error
 
       - name: Create release and attach exe
-        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: v${{ steps.version.outputs.value }}
           name: SmurfSniper ${{ steps.version.outputs.value }}
           generate_release_notes: true
           files: dist/smurfsniper-${{ steps.version.outputs.value }}.exe
