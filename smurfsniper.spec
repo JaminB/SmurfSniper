@@ -139,6 +139,7 @@ exe = EXE(
     a.datas,
     [],
     name="smurfsniper",
+    icon="img/logo.ico",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
