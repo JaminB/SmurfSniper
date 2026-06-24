@@ -9,7 +9,7 @@ import yaml
 
 from smurfsniper import service
 from smurfsniper.config_paths import resolve_config
-from smurfsniper.models.config import Config
+from smurfsniper.models.config import Config, Preferences
 
 DEFAULT_URL = "http://localhost:6119/game"
 VERSION = "0.1.0"
@@ -63,8 +63,11 @@ def load_and_validate_config(
     raw = load_config(path)
     apply_overrides(raw, overrides)
 
+    if "preferences" in raw:
+        raw["preferences"] = Preferences.from_yaml(raw["preferences"])
+
     try:
-        return Config.from_config_file(path)
+        return Config.model_validate(raw)
     except Exception as e:
         raise click.ClickException(f"Config validation failed: {e}")
 
@@ -149,6 +152,10 @@ def run(
 
     if headless:
         if load_path is None:
+            if config_path is not None:
+                raise click.ClickException(
+                    f"Config file not found: {config_path}; cannot run headless."
+                )
             raise click.ClickException("No config file found; cannot run headless.")
         config = load_and_validate_config(load_path, list(overrides))
         if dry_run:
@@ -217,6 +224,8 @@ def validate(
     """
     load_path, _ = resolve_config(config_path)
     if load_path is None:
+        if config_path is not None:
+            raise click.ClickException(f"Config file not found: {config_path}")
         raise click.ClickException("No config file found.")
 
     config = load_and_validate_config(

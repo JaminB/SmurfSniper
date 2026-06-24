@@ -129,7 +129,13 @@ class Config(BaseModel):
         }
         if self.preferences is not None:
             out["preferences"] = self.preferences.to_yaml_dict()
-        if self.integrations is not None and self.integrations.aligulac is not None:
+        # Only emit integrations when there is a real key, so configs that
+        # omit the section round-trip cleanly instead of gaining an empty block.
+        if (
+            self.integrations is not None
+            and self.integrations.aligulac is not None
+            and self.integrations.aligulac.api_key
+        ):
             out["integrations"] = {
                 "aligulac": {"api_key": self.integrations.aligulac.api_key}
             }
@@ -139,4 +145,4 @@ class Config(BaseModel):
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8") as f:
-            yaml.dump(self.to_yaml_dict(), f, sort_keys=False)
+            yaml.safe_dump(self.to_yaml_dict(), f, sort_keys=False)
