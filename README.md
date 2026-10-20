@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <b><a href="https://github.com/JaminB/smurfsniper/releases/latest">⬇️ Download the latest <code>smurfsniper-&lt;version&gt;.exe</code></a></b> — no Python required.
+  <b><a href="https://github.com/JaminB/smurfsniper/releases/latest">⬇️ Download the latest <code>smurfsniper-&lt;version&gt;-windows-x64.exe</code></a></b> — no Python required.
 </p>
 
 **SmurfSniper** is a real-time **StarCraft II** overlay and analysis tool. It watches your
@@ -122,7 +122,7 @@ On demand, gather a deeper scouting profile on the current opponent(s):
 ## Installation
 
 ### Option A — Download the executable
-Grab the latest `smurfsniper-<version>.exe` from the
+Grab the latest `smurfsniper-<version>-windows-x64.exe` from the
 [**latest release**](https://github.com/JaminB/smurfsniper/releases/latest) and run it.
 No Python install required.
 
