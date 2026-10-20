@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QLockFile, QObject, QTimer, QUrl, Slot
+from PySide6.QtCore import QCoreApplication, QEvent, QLockFile, QObject, QTimer, QUrl, Slot
 from PySide6.QtGui import QDesktopServices, QGuiApplication, QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
@@ -194,6 +194,13 @@ class SmurfSniperApp(QObject):
         if self._lock is not None:
             self._lock.unlock()
             self._lock = None
+        # Delete overlays while the QApplication still exists; leaving them to
+        # interpreter finalization can crash the process on exit.
+        if QApplication.instance() is not None:
+            for w in QApplication.topLevelWidgets():
+                w.close()
+                w.deleteLater()
+            QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
     # ------------------------------------------------------------------ config
     def schedule_save(self) -> None:
