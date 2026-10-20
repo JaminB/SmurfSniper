@@ -87,7 +87,8 @@ Top level (`smurfsniper/`):
 `core/` (may import `PySide6.QtCore` only):
 - `events.py` — `EventBus(QObject)` signals.
 - `game_state.py` — `GameState`, `GameContext`, `GameResult`, pure `GameStateMachine` /
-  `derive_state` / `split_teams`, and `Sc2ClientPoller(QObject)`.
+  `derive_state` / `split_teams`, and `Sc2ClientPoller(QObject)`. A UI screen over a running,
+  undecided game (in-game menu) stays IN_GAME; a changed roster while IN_GAME is a new game.
 - `matching.py` — `pick_candidate()` (exact name required, region, MMR window, confidence),
   `identify_me()`, `queue_for()`, `match_type_for()`.
 - `profile.py` — `Stage`, stage dataclasses (`GameSeed`, `Identity`, `RatingInfo`,
@@ -159,7 +160,8 @@ Overlay preference blocks under `preferences`: `1v1_overlay`, `2v2_overlay`, `te
 bottom_center/center.
 
 `me.name` identifies you among the in-game players; `me.mmr` centres the **±500 MMR** candidate
-window. `team.members` names are treated as allies.
+window (widened to ±1000, with lower confidence, when nobody fits). `team.members` names are
+treated as allies.
 
 ## Persistence
 

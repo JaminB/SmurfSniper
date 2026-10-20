@@ -107,7 +107,8 @@ APIs only:
 
 ### Hotkeys
 - **Ctrl+F1** — reset the game-state detector (forces new-game detection on the next poll).
-- **Ctrl+F2** — pull cross-network scouting intel on the current opponent(s).
+- **Ctrl+F2** — show scouting intel (form, maps, pro details, Aligulac, Liquipedia) on the
+  current opponent(s); reuses what was already fetched.
 
 ### Other
 - **Audio chimes** (Windows `winsound`) signal new games and notable findings.
