@@ -63,6 +63,10 @@ class StateEvent:
 IdentifyMe = Callable[[Sequence[GamePlayer]], GamePlayer | None]
 
 
+def _roster(players: Sequence[GamePlayer]) -> tuple[tuple[int, str], ...]:
+    return tuple(sorted((p.id, p.name) for p in players))
+
+
 def split_teams(
     players: Sequence[GamePlayer], me: GamePlayer | None, teammates: set[str]
 ) -> tuple[tuple[GamePlayer, ...], tuple[GamePlayer, ...]]:
@@ -100,6 +104,15 @@ def derive_state(prev: GameState | None, ui: UiInfo | None, game: GameInfo | Non
     if ui is not None and ui.active_screens:
         if ui.loading:
             return GameState.LOADING
+        if (
+            prev is GameState.IN_GAME
+            and game is not None
+            and game.players
+            and not game.is_replay
+            and not game.has_result
+        ):
+            # A screen over a running game (e.g. the in-game menu) is not a new game.
+            return GameState.IN_GAME
         if (
             prev in (GameState.IN_GAME, GameState.RESULT)
             and game is not None
@@ -180,7 +193,16 @@ class GameStateMachine:
         state = derive_state(prev, ui, game)
         events: list[StateEvent] = []
 
-        if state is GameState.IN_GAME and (prev is not GameState.IN_GAME or self._force):
+        roster_changed = (
+            state is GameState.IN_GAME
+            and prev is GameState.IN_GAME
+            and self.current is not None
+            and game is not None
+            and _roster(game.players) != _roster(self.current.players)
+        )
+        if state is GameState.IN_GAME and (
+            prev is not GameState.IN_GAME or self._force or roster_changed
+        ):
             self._force = False
             assert game is not None
             self.current = self.build_context(game)

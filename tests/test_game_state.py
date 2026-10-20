@@ -212,3 +212,23 @@ def test_poller_offline_logs_once(qtbot):
         logger.remove(sink)
     assert msgs.count("SC2 client offline") == 1
     assert not any("ERROR" in m or "failed" in m for m in msgs)
+
+
+def test_screen_over_running_game_is_not_a_new_game(fixture_json):
+    f = load(fixture_json)
+    m = machine()
+    m.next_state(f["ingame"], f["g1v1"])
+    # e.g. the in-game menu: /ui reports a screen while /game still runs undecided
+    state, events = m.next_state(f["menu"], f["g1v1"])
+    assert state is GameState.IN_GAME and events == []
+    state, events = m.next_state(f["ingame"], f["g1v1"])
+    assert state is GameState.IN_GAME and events == []
+    assert m.current.game_id == 1
+
+
+def test_roster_change_while_in_game_starts_new_game(fixture_json):
+    f = load(fixture_json)
+    m = machine(name="BuyOneGetOne")
+    m.next_state(f["ingame"], f["g1v1"])
+    _, events = m.next_state(f["ingame"], f["g2v2"])
+    assert kinds(events) == ["started"] and m.current.game_id == 2
