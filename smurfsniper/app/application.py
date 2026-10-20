@@ -206,7 +206,12 @@ class SmurfSniperApp(QObject):
             self._lock = None
         # Delete overlays while the QApplication still exists; leaving them to
         # interpreter finalization can crash the process on exit.
-        if QApplication.instance() is not None:
+        qapp = QApplication.instance()
+        if qapp is not None:
+            # Deliver signals already queued (e.g. the final state change) while the
+            # widgets are alive, then stop the bus reaching the HUD.
+            qapp.processEvents()
+            self.bus.blockSignals(True)
             for w in QApplication.topLevelWidgets():
                 w.close()
                 w.deleteLater()
