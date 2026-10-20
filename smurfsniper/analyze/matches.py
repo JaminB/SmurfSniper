@@ -1,4 +1,4 @@
-"""Recent ladder matches from one player's perspective (basic tendencies)."""
+"""Decided ladder matches from one player's perspective (input to ``analyze.tendencies``)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-from smurfsniper.analyze.history import Record
 from smurfsniper.api.sc2pulse.ids import MatchType
 from smurfsniper.api.sc2pulse.models import LadderMatch
 
@@ -45,22 +44,3 @@ def recent_results(matches: Sequence[LadderMatch], character_id: int) -> list[Re
         )
     out.sort(key=lambda r: r.ts, reverse=True)
     return out
-
-
-def map_records(results: Sequence[RecentResult]) -> dict[str, Record]:
-    """Per-map record, most played first."""
-    acc: dict[str, list[int]] = {}
-    for r in results:
-        if not r.map:
-            continue
-        wl = acc.setdefault(r.map, [0, 0])
-        wl[0 if r.won else 1] += 1
-    ordered = sorted(acc.items(), key=lambda kv: -(kv[1][0] + kv[1][1]))
-    return {name: Record(w, lo) for name, (w, lo) in ordered}
-
-
-def avg_duration(results: Sequence[RecentResult]) -> int | None:
-    durations = [r.duration_s for r in results if r.duration_s]
-    if not durations:
-        return None
-    return round(sum(durations) / len(durations))

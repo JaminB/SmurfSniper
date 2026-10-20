@@ -17,6 +17,7 @@ class H2HInfo:
     ties: int
     first: datetime
     last: datetime
+    rivalry: str | None = None  # "rival" / "nemesis" (set by the lookup pipeline)
 
 
 def head_to_head(rows: Sequence[PlayerLogRow]) -> H2HInfo | None:
