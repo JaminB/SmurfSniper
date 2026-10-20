@@ -56,6 +56,7 @@ MODULES: tuple[str, ...] = (
     "smurfsniper.ui",
     "smurfsniper.ui.account_picker",
     "smurfsniper.ui.cheatsheet",
+    "smurfsniper.ui.fmt",
     "smurfsniper.ui.frameless",
     "smurfsniper.ui.legacy_render",
     "smurfsniper.ui.overlay_manager",
