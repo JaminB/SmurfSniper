@@ -10,25 +10,27 @@ Stage graph per opponent::
     GAME (sync, in start())
      └─ IDENTITY  search_characters + matching.pick_candidate
          ├─ RATING      character-teams + seasons + tier-thresholds
-         ├─ SMURF       team-histories + team-history-summaries -> analyze.smurf
-         ├─ H2H         local player log (no network)
-         ├─ TENDENCIES  character-matches
+         ├─ SMURF       team-histories + summaries + account alts -> analyze.smurf
+         ├─ H2H         local player log (no network), tagged rival / nemesis
+         ├─ TENDENCIES  character-matches (last 100) -> analyze.tendencies
          └─ INTEL       only if analyze.intel.should_query_pro_sources (or ensure())
     TEAM (2v2+, after every IDENTITY)
 """
 
 from __future__ import annotations
 
+import dataclasses
 import threading
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
-from datetime import UTC, datetime
+from datetime import UTC, datetime, tzinfo
 from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import QObject, Signal
 
 from smurfsniper.analyze import h2h as h2h_mod
-from smurfsniper.analyze import history, intel, matches
+from smurfsniper.analyze import history, intel, tendencies
+from smurfsniper.analyze.rivals import rivals as compute_rivals
 from smurfsniper.analyze.smurf import SmurfInputs, assess
 from smurfsniper.analyze.team import team_summary, windowed_records
 from smurfsniper.api.errors import ApiError
@@ -86,9 +88,11 @@ class LookupPipeline(QObject):
         mmr_window: Callable[[], int],
         max_workers: int = 4,
         now: Callable[[], datetime] = lambda: datetime.now(UTC),
+        local_tz: Callable[[], tzinfo] = lambda: datetime.now().astimezone().tzinfo or UTC,
     ):
         super().__init__()
         self.clients = clients
+        self._local_tz = local_tz
         self.db = db
         self._my_mmr = my_mmr
         self._my_region = my_region
@@ -364,8 +368,14 @@ class LookupPipeline(QObject):
         if not uids:
             uids = [solo_legacy_uid(Queue.LOTV_1V1, ch.region, ch.realm, ch.battlenet_id, None)]
         pulse = self.clients.sc2pulse
-        series = pulse.team_histories(uids)
-        summaries = pulse.team_history_summaries(uids)
+        # Histories, summaries and the account's alts are independent: fetch in parallel.
+        with ThreadPoolExecutor(max_workers=3, thread_name_prefix="smurf") as pool:
+            f_series = pool.submit(pulse.team_histories, uids)
+            f_sums = pool.submit(pulse.team_history_summaries, uids)
+            f_alts = pool.submit(self._alts, ch.account_id)
+            series = f_series.result()
+            summaries = f_sums.result()
+            alts = f_alts.result()
         now = self._now()
         points = history.rating_points(series)
         outs = history.outcomes(points)
@@ -373,6 +383,12 @@ class LookupPipeline(QObject):
         peak_league = max(
             (s.league_type_max for s in summaries if s.league_type_max is not None), default=None
         )
+        race_by_uid = dict(zip(uids, races, strict=False))
+        race_peaks = {
+            race_by_uid[s.legacy_uid]: s.rating_max
+            for s in summaries
+            if s.legacy_uid in race_by_uid and s.rating_max
+        }
         cand = identity.candidate
         current = cand.rating or (points[-1].rating if points else None)
         assessment = assess(
@@ -381,10 +397,14 @@ class LookupPipeline(QObject):
                 points=points,
                 now=now,
                 current_mmr=current,
+                current_league=points[-1].league if points else None,
                 peak_mmr=max(filter(None, (peak, cand.rating_max)), default=None),
                 peak_league=peak_league if peak_league is not None else cand.league_max,
                 race_games=dict(cand.members.race_games),
                 current_race=race_now,
+                alt_characters=alts,
+                character_id=ch.id,
+                race_peaks=race_peaks,
             )
         )
         season = None
@@ -402,25 +422,38 @@ class LookupPipeline(QObject):
             records=windowed_records(outs, points, now=now, season=season),
         )
 
+    def _alts(self, account_id: int) -> list:
+        """Other characters of the same Battle.net account (best effort)."""
+        try:
+            return self.clients.sc2pulse.account_characters(account_id)
+        except ApiError as e:
+            logger.debug(f"account characters unavailable: {e}")
+            return []
+
     def _h2h(self, ctx: GameContext, slot: int, identity: Identity) -> Any:
         if self.db is None:
             return None
-        rows = self.db.rows_for(identity.character.region, identity.character.battlenet_id)
-        return h2h_mod.head_to_head(rows)
+        ch = identity.character
+        rows = self.db.rows_for(ch.region, ch.battlenet_id)
+        info = h2h_mod.head_to_head(rows)
+        if info is None or info.games < 2:
+            return info
+        summary = compute_rivals(self.db.all_rows())
+        tag = summary.standing(ch.region, ch.battlenet_id) or "rival"
+        return dataclasses.replace(info, rivalry=tag)
 
     def _tendencies(self, ctx: GameContext, slot: int, identity: Identity) -> TendenciesInfo | None:
         mode = ctx.mode
-        page = self.clients.sc2pulse.character_matches(
-            [identity.character.id], types=[matching.match_type_for(mode)], limit=25
+        found = list(
+            self.clients.sc2pulse.iter_character_matches(
+                [identity.character.id],
+                types=[matching.match_type_for(mode)],
+                page_size=50,
+                max_items=100,
+            )
         )
-        recent = matches.recent_results(page.result, identity.character.id)
-        if not recent:
-            return None
-        return TendenciesInfo(
-            recent=recent,
-            maps=matches.map_records(recent),
-            avg_duration_s=matches.avg_duration(recent),
-        )
+        result = tendencies.tendencies(found, identity.character.id, tz=self._local_tz())
+        return TendenciesInfo(result) if result is not None else None
 
     def _intel(self, ctx: GameContext, slot: int, identity: Identity) -> IntelInfo | None:
         pulse = self.clients.sc2pulse
