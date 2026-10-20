@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 
 from PySide6.QtCore import QObject, Signal, Slot
 
-from smurfsniper.analyze.session import SessionSnapshot, snapshot
+from smurfsniper.analyze.session import SessionSnapshot, mmr_start_of, snapshot
 from smurfsniper.core import matching
 from smurfsniper.core.events import EventBus
 from smurfsniper.core.game_state import GameContext, GameResult
@@ -87,8 +87,7 @@ class SessionTracker(QObject):
         """The live snapshot; a session whose last game is over 3 h old reads as empty."""
         self._rollover(self._now())
         games = self._games
-        start = next((g.mmr_before for g in games if g.mmr_before), None)
-        return snapshot(games, mmr_start=start, started_at=self._started_at)
+        return snapshot(games, mmr_start=mmr_start_of(games), started_at=self._started_at)
 
     def _rollover(self, now: datetime) -> None:
         if self._games and now - self._games[-1].ended_at > SESSION_GAP:

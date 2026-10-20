@@ -316,3 +316,19 @@ def test_migration_to_v3_keeps_existing_player_log_rows(tmp_path):
         "character_id",
     }
     db.close()
+
+
+def test_snapshot_mmr_never_mixes_queues():
+    from smurfsniper.analyze.session import mmr_start_of
+
+    games = [
+        sg(0, "victory", before=4100, after=4120),
+        sg(1, "victory", mode="2v2", before=3000, after=3020),
+    ]
+    start = mmr_start_of(games)
+    assert start == 3000  # the 2v2 rating before the first 2v2 game
+    s = snapshot(games, mmr_start=start)
+    assert (s.mmr_now, s.mmr_delta, s.mmr_points) == (3020, 20, (3000, 3020))
+    games.append(sg(2, "defeat", before=4120, after=4101))
+    s = snapshot(games, mmr_start=mmr_start_of(games))
+    assert (s.mmr_now, s.mmr_delta, s.mmr_points) == (4101, 1, (4100, 4120, 4101))

@@ -48,6 +48,20 @@ def matchup_key(opponent_race: str | None) -> str | None:
     return f"v{initial}" if initial else None
 
 
+def mmr_mode(games: Sequence[SessionGame]) -> str | None:
+    """The mode whose ratings the session shows: the latest game with a known rating."""
+    for g in reversed(games):
+        if g.mmr_after:
+            return g.mode
+    return games[-1].mode if games else None
+
+
+def mmr_start_of(games: Sequence[SessionGame]) -> int | None:
+    """The rating before the first game of ``mmr_mode(games)``."""
+    mode = mmr_mode(games)
+    return next((g.mmr_before for g in games if g.mmr_before and g.mode == mode), None)
+
+
 def snapshot(
     games: Sequence[SessionGame],
     *,
@@ -59,7 +73,10 @@ def snapshot(
     losses = sum(1 for g in games if g.my_result == "defeat")
     ties = sum(1 for g in games if g.my_result == "tie")
 
-    after = [g.mmr_after for g in games if g.mmr_after]
+    # MMR figures follow one queue (the latest rated one) so a 1v1 start is never
+    # compared with a 2v2 rating.
+    queue_mode = mmr_mode(games)
+    after = [g.mmr_after for g in games if g.mmr_after and g.mode == queue_mode]
     mmr_now = after[-1] if after else None
     points: tuple[int, ...] = ()
     if mmr_start and after:
