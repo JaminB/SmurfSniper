@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import textwrap
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from PySide6.QtCore import QObject, QTimer, Signal, Slot
@@ -18,9 +19,9 @@ from smurfsniper.core.game_state import GameContext
 from smurfsniper.core.lookup import TEAM_SLOT
 from smurfsniper.core.profile import GameSeed, LookupUpdate, OpponentProfile, Stage, ago
 from smurfsniper.logger import logger
-from smurfsniper.models.config import Config, OverlayPreferences
+from smurfsniper.models.config import Config, Placement
 from smurfsniper.ui.overlay_manager import close_all_overlays
-from smurfsniper.ui.overlays import Overlay
+from smurfsniper.ui.overlays import Overlay, styled
 
 SMURF_LABEL = {
     "suspicious": "Suspiciously strong",
@@ -192,10 +193,22 @@ def intel_lines(prof: OpponentProfile) -> list[str] | None:
     return [f"🔎 {name}", *lines]
 
 
+@dataclass(frozen=True)
+class SurfacePrefs:
+    """Where and how long one legacy overlay is shown (derived from the v2 config)."""
+
+    visible: bool
+    placement: Placement
+    seconds_visible: int
+    orientation: str = "horizontal"
+    delay: float = 0.0
+
+
 class LegacyRenderer(QObject):
     """Accumulates ``OpponentProfile``s and shows the legacy overlays once ready."""
 
     rendered = Signal(str, int)  # (overlay kind, game_id)
+    hidden_changed = Signal(bool)
 
     def __init__(
         self,
@@ -217,6 +230,8 @@ class LegacyRenderer(QObject):
         self._team_done = False
         self._shown: set[str] = set()
         self._timers: list[QTimer] = []
+        self._windows: dict[str, Overlay] = {}
+        self.hidden = False
         self._intel_requested = False
         self.dropped = 0
 
@@ -252,7 +267,7 @@ class LegacyRenderer(QObject):
             self._maybe_intel()
 
     def request_intel(self) -> None:
-        """Ctrl+F2: show the intel overlay once INTEL finished for every resolved slot."""
+        """Intel hotkey: show the intel overlay once INTEL finished for every resolved slot."""
         if not self.profiles:
             logger.info("Intel: no current opponent")
             return
@@ -266,6 +281,8 @@ class LegacyRenderer(QObject):
             t.deleteLater()
         self._timers = []
         close_all_overlays()
+        self._windows = {}
+        self.set_hidden(False)
         self.game_id = None
         self.ctx = None
         self.profiles = {}
@@ -283,30 +300,68 @@ class LegacyRenderer(QObject):
             return True
         return prof.done(Stage.RATING) and prof.done(Stage.SMURF)
 
-    def _prefs(self, name: str) -> OverlayPreferences:
-        prefs = self.config.preferences
-        return getattr(prefs, name) if prefs is not None else OverlayPreferences()
+    def _prefs(self, surface: str, slot: int = 0) -> SurfacePrefs:
+        """``surface`` is ``card``, ``toasts`` or ``panels`` (see ``OverlayConfig``)."""
+        ov = self.config.overlays
+        if surface == "card":
+            return SurfacePrefs(ov.card.enabled, ov.card.placement, ov.card.auto_hide_seconds)
+        if surface == "toasts":
+            p = ov.toasts.placement
+            p = p.model_copy(update={"offset_y": p.offset_y + slot * 96})
+            return SurfacePrefs(ov.toasts.enabled, p, round(ov.toasts.seconds))
+        return SurfacePrefs(True, ov.panels.placement, 30)
 
-    def _display(
-        self, kind: str, prefs: OverlayPreferences, rows: list[list[str]], style: str
-    ) -> None:
+    def toggle(self, kind: str) -> bool:
+        """Close the ``kind`` overlay if it is open, else show it again from cached data."""
+        ov = self._windows.get(kind)
+        if ov is not None and ov.isVisible():
+            ov.close()
+            return False
+        if kind == "main":
+            self._shown.discard("main")
+            self._maybe_main(chime=False)
+        elif kind == "intel":
+            self.request_intel()
+        return True
+
+    def is_open(self, kind: str) -> bool:
+        ov = self._windows.get(kind)
+        return ov is not None and ov.isVisible()
+
+    def set_hidden(self, hidden: bool) -> None:
+        changed = hidden != self.hidden
+        self.hidden = hidden
+        if hidden:
+            close_all_overlays()
+        if changed:
+            self.hidden_changed.emit(hidden)
+
+    def _display(self, kind: str, prefs: SurfacePrefs, rows: list[list[str]], style: str) -> None:
         self._shown.add(kind)
-        if not prefs.visible or not rows:
+        if not prefs.visible or not rows or self.hidden:
             return
         self.rendered.emit(kind, self.game_id or 0)
         if not self._show:
             return
         game_id = self.game_id
+        ov_cfg = self.config.overlays
+        style = styled(style, opacity=ov_cfg.opacity, scale=ov_cfg.scale)
 
         def build() -> None:
-            if self.game_id != game_id:
+            if self.game_id != game_id or self.hidden:
                 return
-            ov = Overlay(duration_seconds=prefs.seconds_visible, position=prefs.position)
+            ov = Overlay(
+                duration_seconds=prefs.seconds_visible,
+                placement=prefs.placement,
+                screen=ov_cfg.screen,
+                scale=ov_cfg.scale,
+            )
             for row in rows:
                 ov.add_row(row, style=style, spacing=12)
+            self._windows[kind] = ov
             ov.show()
 
-        delay = int(max(0.0, prefs.seconds_delay_before_show) * 1000)
+        delay = int(max(0.0, prefs.delay) * 1000)
         if delay <= 0:
             build()
             return
@@ -321,7 +376,7 @@ class LegacyRenderer(QObject):
             return [[b] for b in blocks]
         return [blocks]
 
-    def _maybe_main(self) -> None:
+    def _maybe_main(self, *, chime: bool = True) -> None:
         if "main" in self._shown or not self.profiles:
             return
         if not all(self._slot_ready(p) for p in self.profiles.values()):
@@ -334,13 +389,13 @@ class LegacyRenderer(QObject):
         n = len(self.profiles)
         ordered = [self.profiles[i] for i in sorted(self.profiles)]
         if n == 1:
-            prefs = self._prefs("overlay_1v1")
+            prefs = self._prefs("card")
             blocks = ["\n".join(player_lines(ordered[0], now=now))]
         elif n == 2:
-            prefs = self._prefs("overlay_2v2")
+            prefs = self._prefs("card")
             blocks = ["\n".join(player_lines(p, now=now)) for p in ordered]
         else:
-            prefs = self._prefs("overlay_team")
+            prefs = self._prefs("card")
             blocks = ["\n".join(compact_line(p) for p in ordered)]
             worst = max(
                 (p for p in ordered if p.smurf),
@@ -355,7 +410,7 @@ class LegacyRenderer(QObject):
                 name = worst.identity.character.base_name if worst.identity else worst.seed.name
                 blocks[0] += f"\n{name}: {worst.smurf.assessment.top_reason.text}"
         self._display("main", prefs, self._layout(blocks, prefs.orientation), Overlay.PLAYER_STYLE)
-        if self._chime:
+        if self._chime and chime:
             likely = any(p.smurf and p.smurf.assessment.level == "likely" for p in ordered)
             self._chime("two" if likely or n == 1 else "one")
 
@@ -380,7 +435,7 @@ class LegacyRenderer(QObject):
             lines.append(" · ".join(f"{k} {r}" for k, r in info.records.items()))
         if info.members_races:
             lines.append(" / ".join(RACE_LABEL.get(r, r) for r in info.members_races))
-        prefs = self._prefs("overlay_team")
+        prefs = self._prefs("card")
         self._display("team", prefs, [["\n".join(lines)]], Overlay.PLAYER_STYLE)
 
     def _show_h2h(self, slot: int, prof: OpponentProfile) -> None:
@@ -388,7 +443,7 @@ class LegacyRenderer(QObject):
         lines = h2h_lines(prof, now=self._now())
         if kind in self._shown or not lines:
             return
-        prefs = self._prefs("overlay_player_log_2" if slot % 2 else "overlay_player_log_1")
+        prefs = self._prefs("toasts", slot % 2)
         self._display(kind, prefs, self._layout(lines, prefs.orientation), Overlay.PLAYER_STYLE)
 
     def _maybe_intel(self) -> None:
@@ -410,4 +465,4 @@ class LegacyRenderer(QObject):
             logger.info("Intel: nothing found for this game's opponents")
             return
         close_all_overlays()
-        self._display("intel", self._prefs("overlay_external"), [blocks], Overlay.PLAYER_STYLE)
+        self._display("intel", self._prefs("panels"), [blocks], Overlay.PLAYER_STYLE)
