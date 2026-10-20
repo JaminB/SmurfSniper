@@ -342,3 +342,14 @@ def test_preview_shows_sample_surfaces(env, qtbot):
     hud.preview()
     assert len(hud._previews) == 3
     assert all(w.isVisible() for w in hud._previews[::2])  # card + panel
+
+
+def test_preview_twice_then_ends(env, qtbot):
+    hud, *_ = env
+    hud.preview()
+    hud.preview()  # replaces the first set without crashing
+    card = hud._previews[0]
+    assert card.isVisible()
+    hud._end_preview()
+    assert not card.isVisible()
+    qtbot.wait(10)

@@ -15,6 +15,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+import shiboken6
 from PySide6.QtCore import QCoreApplication, QObject, QThread, QTimer, Signal, Slot
 from PySide6.QtWidgets import QWidget
 
@@ -111,6 +112,9 @@ class HudController(QObject):
         self._alerted: set[int] = set()
         self._intel_pending = False
         self._previews: list[QWidget] = []
+        self._preview_timer = QTimer(self)
+        self._preview_timer.setSingleShot(True)
+        self._preview_timer.timeout.connect(self._end_preview)
 
         self._card_timer = QTimer(self)
         self._card_timer.setSingleShot(True)
@@ -440,8 +444,10 @@ class HudController(QObject):
         cfg = config or self.config
         ov = cfg.overlays
         tk = TokenContext.from_overlays(ov)
-        for w in self._previews:
-            w.deleteLater()
+        self._end_preview()
+        for w in self._previews:  # windows of an earlier preview
+            if shiboken6.isValid(w):
+                w.deleteLater()
         prof = preview_data.smurf_profile()
         card = OpponentCard(tk, ov.card.placement, now=lambda: preview_data.NOW)
         card.start(0, [prof.seed], my_race="ZERG")
@@ -451,17 +457,18 @@ class HudController(QObject):
         stack.push(ToastSpec("Preview: toast", "Recaps and alerts appear here.", kind="info"))
         panel = Panel(INTEL_TITLE, self.hotkey(HotkeyAction.INTEL), tk, ov.panels.placement)
         panel.set_body(build_intel_body([preview_data.intel_profile()], tk) or [])
+        # Keep references until the next preview: dropping the last Python reference would
+        # destroy a window in the middle of its fade-out.
         self._previews = [card, stack, panel]
         card.reveal()
         panel.reveal()
+        self._preview_timer.start(PREVIEW_MS)
 
-        def done() -> None:
-            for w in self._previews:
-                if isinstance(w, OverlayWindow):
-                    w.dismiss(then=w.deleteLater)
-            self._previews = []
-
-        QTimer.singleShot(PREVIEW_MS, self, done)
+    def _end_preview(self) -> None:
+        self._preview_timer.stop()
+        for w in self._previews:
+            if isinstance(w, OverlayWindow) and shiboken6.isValid(w):
+                w.dismiss()
 
     # ------------------------------------------------------------ internals
     def _make_panel(self, action: HotkeyAction, title: str) -> Panel:
