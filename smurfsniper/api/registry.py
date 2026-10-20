@@ -10,8 +10,8 @@ from smurfsniper.api import aligulac, liquipedia, sc2pulse
 from smurfsniper.api.aligulac import AligulacClient
 from smurfsniper.api.cache import DiskCache, MemoryCache, TieredCache
 from smurfsniper.api.liquipedia import LiquipediaClient
-from smurfsniper.api.sc2client import DEFAULT_URL, LocalSc2Client
-from smurfsniper.api.sc2pulse import SC2PulseClient
+from smurfsniper.api.sc2client.client import DEFAULT_URL, LocalSc2Client
+from smurfsniper.api.sc2pulse.client import SC2PulseClient
 from smurfsniper.api.transport import HttpTransport
 from smurfsniper.logger import logger
 
