@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Literal
-
 from PySide6.QtCore import QPropertyAnimation, Qt, QTimer, Signal
 from PySide6.QtWidgets import QGraphicsOpacityEffect, QHBoxLayout, QVBoxLayout, QWidget
 
+from smurfsniper.core.toasts import ToastSpec
 from smurfsniper.models.config import Anchor, Placement
 from smurfsniper.ui import tokens as t
 from smurfsniper.ui.overlay.base import OverlayWindow, Surface, animations_enabled, easing, qcolor
 from smurfsniper.ui.overlay.widgets import Chip, Text, elide_lines
 from smurfsniper.ui.tokens import TokenContext
 
-Kind = Literal["info", "success", "warning", "danger", "win", "loss"]
 KIND_ACCENT: dict[str, tuple[int, int, int]] = {
     "info": t.INFO,
     "success": t.POSITIVE,
@@ -23,17 +20,6 @@ KIND_ACCENT: dict[str, tuple[int, int, int]] = {
     "win": t.POSITIVE,
     "loss": t.NEGATIVE,
 }
-
-
-@dataclass(frozen=True)
-class ToastSpec:
-    title: str
-    body: str | None = None
-    kind: Kind = "info"
-    accent: tuple[int, int, int] | None = None  # overrides the kind accent (e.g. race)
-    id: str | None = None  # same id -> update in place (text + timer reset)
-    duration_ms: int | None = None  # None -> config.overlays.toasts.seconds
-    chip: str | None = None  # optional hotkey chip, e.g. "Ctrl+Shift+2"
 
 
 class Toast(Surface):

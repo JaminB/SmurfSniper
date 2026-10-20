@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 
 from smurfsniper.core.profile import IntelInfo, OpponentProfile, TendenciesInfo
@@ -105,31 +106,80 @@ def _pro_rows(intel: IntelInfo, tk: TokenContext, width: int) -> list[QWidget]:
     return [r for r in rows if r is not None]
 
 
-def _tendency_rows(tend: TendenciesInfo, tk: TokenContext) -> list[QWidget]:
+def _tendency_rows(info: TendenciesInfo, tk: TokenContext) -> list[QWidget]:
+    """FORM, VS, MAPS, LENGTH, TIME, RACE. Each row is omitted when its data is None."""
+    tend = info.data
     rows: list[QWidget | None] = []
-    recent = fmt.form(tend.recent)
-    if recent:
+    if tend.form:
         pos, neg = t.css(t.POSITIVE), t.css(t.NEGATIVE)
         letters = "&nbsp;".join(
-            f'<span style="color:{pos if w else neg}">{"W" if w else "L"}</span>' for w in recent
+            f'<span style="color:{pos if f == "W" else neg}">{f}</span>' for f in tend.form
         )
-        avg = fmt.duration(tend.avg_duration_s)
         row = Row(tk)
         row.lay.addWidget(key_label(tk, "FORM"))
         row.lay.addWidget(Text(letters, tk, role="caption", weight=600, rich=True))
-        if avg:
-            row.lay.addWidget(Text("·", tk, role="caption", color=t.TEXT_MUTED))
-            row.lay.addWidget(Text(f"avg {avg}", tk, role="caption", color=t.TEXT_SECONDARY))
         row.lay.addStretch(1)
         rows.append(row)
-    elif tend.avg_duration_s:
+    rows.append(key_row(tk, "VS", [Part(fmt.vs_races_line(tend), "caption", t.TEXT_SECONDARY)]))
+    rows.append(
+        key_row(
+            tk, "MAPS", [Part(fmt.top_maps(tend.maps), "caption", t.TEXT_SECONDARY, elide=True)]
+        )
+    )
+    avg = fmt.duration(tend.avg_duration_s)
+    rows.append(
+        key_row(
+            tk,
+            "LENGTH",
+            dotted(
+                [
+                    Part(f"avg {avg}" if avg else None, "caption", t.TEXT_SECONDARY),
+                    Part(
+                        f"{tend.short_win_rate:.0%} of wins < 6 min"
+                        if fmt.short_wins(tend) and tend.short_win_rate is not None
+                        else None,
+                        "caption",
+                        t.WARNING,
+                    ),
+                ]
+            ),
+        )
+    )
+    hours = fmt.hour_range(tend.peak_hours)
+    rows.append(
+        key_row(
+            tk,
+            "TIME",
+            [Part(f"Usually plays {hours}" if hours else None, "caption", t.TEXT_SECONDARY)],
+        )
+    )
+    rows.append(key_row(tk, "RACE", [Part(fmt.off_race(tend), "caption", t.TEXT_SECONDARY)]))
+    return [r for r in rows if r is not None]
+
+
+def _key_gap(tk: TokenContext, width: int = 44) -> QWidget:
+    """Blank key column (keeps continuation rows aligned without an empty label)."""
+    gap = QWidget()
+    gap.setFixedWidth(tk.px(width))
+    gap.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+    return gap
+
+
+def _smurf_rows(prof: OpponentProfile, tk: TokenContext) -> list[QWidget]:
+    """Every smurf reason (the card only has room for the top two)."""
+    sm = prof.smurf
+    if sm is None or sm.assessment.level == "none":
+        return []
+    fg = t.SMURF_BADGE[sm.assessment.level][0]
+    rows: list[QWidget | None] = []
+    for i, reason in enumerate(sm.assessment.reasons):
         rows.append(
-            key_row(
-                tk, "LENGTH", [Part(fmt.duration(tend.avg_duration_s), "caption", t.TEXT_SECONDARY)]
+            Row.create(
+                tk,
+                [Part(reason.text, "caption", fg, elide=True)],
+                lead=key_label(tk, "SMURF") if i == 0 else _key_gap(tk),
             )
         )
-    maps = fmt.top_maps(tend.maps)
-    rows.append(key_row(tk, "MAPS", [Part(maps, "caption", t.TEXT_SECONDARY, elide=True)]))
     return [r for r in rows if r is not None]
 
 
@@ -159,6 +209,7 @@ def opponent_section(prof: OpponentProfile, tk: TokenContext, *, with_name: bool
     rows: list[QWidget] = []
     if prof.intel is not None:
         rows.extend(_pro_rows(prof.intel, tk, width))
+    rows.extend(_smurf_rows(prof, tk))
     if prof.tendencies is not None:
         rows.extend(_tendency_rows(prof.tendencies, tk))
     if prof.intel is not None:

@@ -242,6 +242,7 @@ def test_intel_hotkey_requests_once_and_fills_panel(env, monkeypatch):
     start(hud, bus)
     prof = pd.smurf_profile()
     feed(hud, 1, 0, prof, upto=Stage.H2H)
+    hud.profiles[0].smurf = None  # nothing to show yet: the panel opens in its loading state
     hud.on_hotkey(HotkeyAction.INTEL.value)
     assert {c[2] for c in calls} == {Stage.INTEL, Stage.TENDENCIES}
     panel = hud.panels.current(HotkeyAction.INTEL.value)

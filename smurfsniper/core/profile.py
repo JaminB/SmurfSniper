@@ -8,9 +8,9 @@ from enum import StrEnum
 
 from smurfsniper.analyze.h2h import H2HInfo
 from smurfsniper.analyze.history import Record, Trend
-from smurfsniper.analyze.matches import RecentResult
 from smurfsniper.analyze.smurf import SmurfAssessment
 from smurfsniper.analyze.team import TeamInfo
+from smurfsniper.analyze.tendencies import Tendencies
 from smurfsniper.api.aligulac.models import AligulacPlayer
 from smurfsniper.api.liquipedia.models import PageSummary
 from smurfsniper.api.sc2pulse.models import (
@@ -88,9 +88,9 @@ class SmurfInfo:
 
 @dataclass(frozen=True)
 class TendenciesInfo:
-    recent: list[RecentResult]
-    maps: dict[str, Record]
-    avg_duration_s: int | None
+    """Wrapper so the stage payload stays a distinct type from the pure analysis."""
+
+    data: Tendencies
 
 
 @dataclass(frozen=True)

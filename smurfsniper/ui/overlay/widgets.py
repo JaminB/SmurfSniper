@@ -456,8 +456,10 @@ def key_label(tokens: TokenContext, key: str, *, width: int = 44) -> Text:
     return k
 
 
-def key_row(tokens: TokenContext, key: str, parts: Sequence[Part | None]) -> Row | None:
+def key_row(
+    tokens: TokenContext, key: str, parts: Sequence[Part | None], *, width: int = 44
+) -> Row | None:
     """``MAPS   Alcyone 4-1`` style row; None when every value is empty."""
     if not any(p is not None and p.text for p in parts):
         return None
-    return Row.create(tokens, parts, lead=key_label(tokens, key))
+    return Row.create(tokens, parts, lead=key_label(tokens, key, width=width))

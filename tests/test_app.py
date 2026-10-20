@@ -76,11 +76,42 @@ def test_hotkeys_route_to_service_and_hud(app, monkeypatch):
         HotkeyAction.REDETECT,
         HotkeyAction.OPPONENT_CARD,
         HotkeyAction.INTEL,
-        HotkeyAction.SESSION,  # later branches: logged, nothing else
-        HotkeyAction.RIVALS,
     ):
         app._on_hotkey(action.value)
     assert calls == ["redetect", "card", "intel"]
+
+
+def test_session_and_rivals_hotkeys_toggle_their_panels(app, qtbot):
+    for action, title in ((HotkeyAction.SESSION, "Session"), (HotkeyAction.RIVALS, "Rivals")):
+        app._on_hotkey(action.value)
+        panel = app.hud.panels.current(action.value)
+        assert panel is not None and panel.title_text == title
+        app._on_hotkey(action.value)
+        assert app.hud.panels.current() is None
+    app._on_hotkey(HotkeyAction.RIVALS.value)
+    qtbot.waitUntil(lambda: not app.hud.panels.current().loading, timeout=3000)
+    assert "Play the same opponent twice" in " ".join(app.hud.panels.current().texts())
+
+
+def test_finished_game_updates_session_recap_and_rating(app, qtbot):
+    from datetime import UTC, datetime
+
+    from smurfsniper.api.sc2client.models import GamePlayer
+    from smurfsniper.core.game_state import GameContext, GameResult
+
+    me = GamePlayer(id=1, name="Me", race="Zerg")
+    opp = GamePlayer(id=2, name="Bob", race="Terran")
+    ctx = GameContext(7, datetime.now(UTC), (me, opp), me, (), (opp,), "1v1", False)
+    titles: list = []
+    app.bus.toast_requested.connect(titles.append)
+    app.config.account.mmr_by_queue[201] = 4000
+    app.bus.game_started.emit(ctx)
+    app.bus.game_ended.emit(GameResult(ctx, "victory", 600.0))
+    assert titles and titles[0].title == "Victory vs Bob (Terran)"
+    assert app.session.current().wins == 1
+    app.account.mmr_refreshed.emit(201, 4016)
+    assert titles[-1].id == titles[0].id and titles[-1].body.startswith("+16 MMR (4,016)")
+    assert app.session.current().mmr_delta == 16
 
 
 def test_hide_all_hotkey_toggles_and_mirrors_in_tray(app):

@@ -27,12 +27,13 @@ from smurfsniper.core.lookup import LookupPipeline
 from smurfsniper.logger import logger
 from smurfsniper.models.config import Config
 from smurfsniper.storage.player_log import PlayerLogStore
-from smurfsniper.ui.fmt import RACE_LABEL
+from smurfsniper.textutil import RACE_LABEL
 
 
 class Service(QObject):
     redetect_requested = Signal()
     state_text_changed = Signal(str)  # tray status line
+    game_logged = Signal(object)  # GameResult, after its opponents reached the player log
 
     def __init__(
         self,
@@ -196,6 +197,7 @@ class Service(QObject):
             self.store.record_game(result, profiles)
         except Exception as e:
             logger.opt(exception=True).warning(f"Could not log game: {e}")
+        self.game_logged.emit(result)  # from the writer thread: delivered queued
 
     def _prune_cache(self) -> None:
         try:

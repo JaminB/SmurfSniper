@@ -334,10 +334,11 @@ class SC2PulseClient:
         cursor: str | None = None
         seen = 0
         while seen < max_items:
+            limit = min(page_size, max_items - seen)
             page = self.character_matches(
                 character_ids,
                 types=types,
-                limit=min(page_size, max_items - seen),
+                limit=limit,
                 after=cursor,
                 force_refresh=force_refresh,
             )
@@ -347,7 +348,7 @@ class SC2PulseClient:
                 if seen >= max_items:
                     return
             cursor = page.navigation.after if page.navigation else None
-            if not page.result or not cursor:
+            if len(page.result) < limit or not cursor:  # a short page is the last one
                 return
 
     def character_links(

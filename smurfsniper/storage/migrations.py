@@ -76,4 +76,35 @@ def m002_player_log_v2(db: SqliteDatabase) -> None:
     )
 
 
-MIGRATIONS: tuple[Callable[[SqliteDatabase], None], ...] = (m001_initial, m002_player_log_v2)
+def m003_session(db: SqliteDatabase) -> None:
+    """Play sessions (a run of games with no 3 h gap) and the games inside them."""
+    db.execute_sql(
+        "CREATE TABLE IF NOT EXISTS session ("
+        "id INTEGER PRIMARY KEY, "
+        "started_at TEXT NOT NULL, "
+        "ended_at TEXT NULL, "
+        "character_id INTEGER NULL)"
+    )
+    db.execute_sql(
+        "CREATE TABLE IF NOT EXISTS session_game ("
+        "id INTEGER PRIMARY KEY, "
+        "session_id INTEGER NOT NULL REFERENCES session(id), "
+        "game_uid TEXT NOT NULL UNIQUE, "
+        "started_at TEXT NOT NULL, "
+        "ended_at TEXT NOT NULL, "
+        "mode TEXT NOT NULL, "
+        "my_race TEXT NULL, "
+        "my_result TEXT NULL, "
+        "opponents TEXT NOT NULL, "
+        "mmr_before INTEGER NULL, "
+        "mmr_after INTEGER NULL, "
+        "game_seconds INTEGER NULL)"
+    )
+    db.execute_sql("CREATE INDEX IF NOT EXISTS session_game_session ON session_game (session_id)")
+
+
+MIGRATIONS: tuple[Callable[[SqliteDatabase], None], ...] = (
+    m001_initial,
+    m002_player_log_v2,
+    m003_session,
+)

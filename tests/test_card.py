@@ -68,8 +68,9 @@ def test_each_stage_adds_the_expected_rows_and_grows(card):
     assert badges == ["LIKELY SMURF 82"]
     text = " ".join(card.texts())
     assert "4,410 MMR" in text and "Diamond 1" in text and "top 9%" in text
-    assert "3d 9-1 · 7d 15-3" in text and "You" in text and "0-1" in text
-    assert "vs Z" in text and "avg 7:40" in text
+    assert "3d 9-1 · 7d 15-3" in text and "You" in text and "1-2" in text
+    assert "vs Z 79% (14)" in text and "avg 7:40" not in text  # one tendencies row only
+    assert "nemesis" in text
     assert_clean(card)
 
 
@@ -191,3 +192,62 @@ def test_animated_reveal_grow_and_dismiss(qtbot):
     c.reveal()  # reusable after dismiss
     assert c.shown
     c.hide_now()
+
+
+def _tend(**kw):
+    from dataclasses import replace
+
+    from smurfsniper.core.profile import TendenciesInfo
+
+    base = pd.smurf_profile().tendencies.data
+    return TendenciesInfo(replace(base, **kw))
+
+
+def test_tendencies_row_prefers_the_winrate_against_your_race(card):
+    card.start(1, [GameSeed("Bob", "TERRAN")], my_race="ZERG")
+    card.apply(LookupUpdate(1, 0, Stage.TENDENCIES, _tend()))
+    assert card.texts() == ["Bob", "vs Z 79% (14)"]
+
+
+def test_tendencies_row_falls_back_to_length_and_cheese_signal(card):
+    few = {"ZERG": Record(2, 1)}  # under 5 games against Zerg
+    card.start(1, [GameSeed("Bob", "TERRAN")], my_race="ZERG")
+    card.apply(LookupUpdate(1, 0, Stage.TENDENCIES, _tend(vs_race=few)))
+    assert card.row_count() == 2
+    assert card.texts()[1:] == ["avg 7:40", "·", "62% wins < 6min"]
+    card.start(2, [GameSeed("Bob", "TERRAN")], my_race="ZERG")
+    card.apply(LookupUpdate(2, 0, Stage.TENDENCIES, _tend(vs_race=few, short_win_rate=0.4)))
+    assert card.texts()[1:] == ["avg 7:40"]
+    assert_clean(card)
+
+
+def test_tendencies_row_is_absent_without_data(card):
+    card.start(1, [GameSeed("Bob", "TERRAN")], my_race="ZERG")
+    card.apply(
+        LookupUpdate(
+            1, 0, Stage.TENDENCIES, _tend(vs_race={}, avg_duration_s=None, short_win_rate=None)
+        )
+    )
+    assert card.row_count() == 1
+
+
+@pytest.mark.parametrize("tag", ["rival", "nemesis"])
+def test_h2h_row_gets_a_rival_suffix(card, tag):
+    from dataclasses import replace
+
+    h = replace(pd.smurf_profile().h2h, rivalry=tag)
+    card.start(1, [GameSeed("Bob", "TERRAN")])
+    card.apply(LookupUpdate(1, 0, Stage.H2H, h))
+    assert card.texts()[-1] == tag
+    labels = {w.text(): w for w in card.findChildren(QLabel)}
+    muted = labels[tag].palette().windowText().color().red()
+    assert (muted == 255) == (tag == "nemesis")  # nemesis is in the negative (red) colour
+    assert_clean(card)
+
+
+def test_h2h_row_has_no_suffix_without_a_rivalry(card):
+    card.start(1, [GameSeed("Bob", "TERRAN")])
+    from dataclasses import replace
+
+    card.apply(LookupUpdate(1, 0, Stage.H2H, replace(pd.smurf_profile().h2h, rivalry=None)))
+    assert "rival" not in " ".join(card.texts()) and "nemesis" not in " ".join(card.texts())

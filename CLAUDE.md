@@ -39,12 +39,26 @@ python scripts/fake_sc2.py --port 6119 --script 1v1     # fake SC2 client for ma
   settings change in the UI (and then includes the override).
 - `--dry-run` loads and validates the config, prints it (Aligulac key masked `****abcd`) and exits.
 - `--no-tray` runs without a tray icon and quits on Ctrl+C.
-- Global hotkeys (`keyboard` lib, rebindable in Settings, defaults `Ctrl+Shift+...`):
-  **1** opponent card (toggle), **2** scouting intel (toggle), **3** session tracker and **4**
-  rivals (reserved for a later branch), **R** re-detect game (new game id on the next in-game
-  poll), **`** hide/show all (resets on the next game). Overlays are click-through, so every
-  panel is dismissed by pressing its hotkey again or the hide-all key; each panel shows its
-  hotkey as a chip in its header, and a hint pill lists the hotkeys at game start.
+- Global hotkeys: see the **Hotkeys** table below. Overlays are click-through, so every panel is
+  dismissed by pressing its hotkey again or the hide-all key; each panel shows its hotkey as a
+  chip in its header, and a hint pill lists the hotkeys at game start.
+
+## Hotkeys
+
+Registered with the `keyboard` library, rebindable in Settings > Hotkeys (stored in
+`hotkeys.*`), shown in the tray cheat-sheet.
+
+| Default | Config key | Action |
+|---|---|---|
+| `Ctrl+Shift+1` | `opponent_card` | Toggle the opponent card (cached data only) |
+| `Ctrl+Shift+2` | `intel` | Toggle the scouting-intel panel (pro info, tendencies, every smurf reason) |
+| `Ctrl+Shift+3` | `session` | Toggle the session tracker panel |
+| `Ctrl+Shift+4` | `rivals` | Toggle the rivals / nemesis panel (local DB only) |
+| `Ctrl+Shift+R` | `redetect` | Re-detect the current game (new game id on the next in-game poll) |
+| `Ctrl+Shift+`` | `hide_all` | Hide / show every overlay (resets on the next game) |
+
+One panel is visible at a time: another panel's hotkey swaps it. No hotkey makes a network call;
+panels read cached profiles, the in-memory session or the local SQLite log.
 
 ## Architecture
 
@@ -60,10 +74,16 @@ EventBus (main thread) ──> Service            SmurfSniperApp (app/applicatio
    └─ on game_ended: PlayerLogStore.record_game on a writer thread, then
       AccountService.refresh_mmr_after_game (20 s / 90 s / 300 s retries)
 
+EventBus.game_started/game_ended + AccountService.mmr_refreshed (main thread)
+   ├─ SessionTracker (core/session.py): in-memory session + SQLite copy on one worker;
+   │     emits game_added -> RecapService (toast, updated in place when the rating lands)
+   │     and bus.session_updated -> the open Session panel
+   └─ RivalsCache (core/rivals.py): RivalsSummary from the player log, cached until the next game
+
 EventBus + LookupPipeline.update ──> HudController (ui/hud.py, main thread)
    ├─ OpponentCard: one row on GAME, rows inserted as stages land (never empty rows)
    ├─ ToastStack (bus.toast_requested, smurf / SC2Pulse-down / "no intel" notices)
-   ├─ PanelHost: one on-demand panel (intel; branch 5 registers session / rivals)
+   ├─ PanelHost: one on-demand panel (intel, session, rivals)
    └─ HotkeyHint at game start; visibility rules per GameState (see below)
 
 HotkeyManager (keyboard thread -> triggered signal) -> SmurfSniperApp._on_hotkey
@@ -93,8 +113,9 @@ Top level (`smurfsniper/`):
   smoke test: imports every module, loads assets, builds the Settings window and renders
   a full opponent card and the intel panel).
 - `service.py` — `Service` (wires poller -> bus -> pipeline, player-log writes, pause, tray
-  status text, `request_redetect()`). It creates no widgets; the HUD subscribes to the bus and
-  the pipeline.
+  status text, `request_redetect()`, `game_logged` once a game's opponents are stored). It
+  creates no widgets; the HUD subscribes to the bus and the pipeline.
+- `textutil.py` — `join`, `duration`, `RACE_LABEL` (no Qt; shared by `core` and `ui.fmt`).
 - `paths.py` — platformdirs locations (`config_dir`, `data_dir`, `cache_dir`, `log_dir`,
   `db_path`, `http_cache_path`, `state_path`, `lock_path`) and `ensure_dirs()`. Nothing
   touches disk at import.
@@ -143,8 +164,20 @@ Top level (`smurfsniper/`):
 - `matching.py` — `pick_candidate()` (exact name required, region, MMR window, confidence),
   `identify_me()`, `queue_for()`, `match_type_for()`.
 - `profile.py` — `Stage`, stage dataclasses (`GameSeed`, `Identity`, `RatingInfo`,
-  `SmurfInfo`, `TendenciesInfo`, `IntelInfo`), `LookupUpdate`, `OpponentProfile`.
-- `lookup.py` — `LookupPipeline` (executor, stage graph, `ensure()`, `results()`).
+  `SmurfInfo`, `TendenciesInfo` (wraps `analyze.tendencies.Tendencies`), `IntelInfo`),
+  `LookupUpdate`, `OpponentProfile`.
+- `lookup.py` — `LookupPipeline` (executor, stage graph, `ensure()`, `results()`). SMURF also
+  fetches `account_characters` (alts) and the per-race summaries in parallel; TENDENCIES reads
+  the last 100 matches (`iter_character_matches`, 5 min TTL); H2H tags a rival / nemesis.
+- `session.py` — `SessionTracker`: logs each finished ladder game (not vs AI, not custom),
+  `mmr_before` captured at game start, `mmr_after` from `AccountService.mmr_refreshed`;
+  `current()` is the live `SessionSnapshot` (a session whose last game is over 3 h old reads
+  as empty).
+- `recap.py` — `RecapService`: post-game toast (`recap-<game_id>`, 10 s) and its in-place MMR
+  update within 5.5 min of the game.
+- `rivals.py` — `RivalsCache`: `RivalsSummary` read from the log on a worker, cleared on
+  `game_ended` / `game_logged`.
+- `toasts.py` — `ToastSpec` (so `core` can request toasts without importing `ui`).
 - `account.py` — `AccountService`: `identify_me` (configured name, vs-AI, 2-of-3 recent games),
   `search()` -> `AccountCandidate`s, `choose()`, `refresh_mmr_after_game()` /
   `refresh_mmr_now()`. Config mutations are marshalled to the main thread by private signals.
@@ -154,17 +187,25 @@ Top level (`smurfsniper/`):
   (from WINS/GAMES deltas), `record`, `season_record`, `trend`, `sparkline`,
   `account_age_days`, `climb_velocity`.
 - `smurf.py` — `SmurfInputs`, `SmurfAssessment`, `SmurfReason`, `assess()`, `LEVELS`.
-- `h2h.py` — `H2HInfo`, `head_to_head(rows)`.
+- `h2h.py` — `H2HInfo` (with `rivalry`), `head_to_head(rows)`.
 - `intel.py` — `is_distinctive_name`, `should_query_pro_sources`, `aligulac_id`.
-- `matches.py` — `RecentResult`, `recent_results`, `map_records`, `avg_duration`.
+- `matches.py` — `RecentResult`, `recent_results` (decided ladder matches, newest first).
+- `tendencies.py` — `Tendencies`, `tendencies(matches, character_id, tz=)`: race matchups,
+  maps, durations, cheese rate, form, streak, active hours, off-racing (None below 3 matches).
+- `session.py` — `SessionSnapshot`, `snapshot(games, mmr_start=)`.
+- `rivals.py` — `Rival`, `RivalsSummary`, `rivals(rows)`: top rivals, nemesis, favourite victim.
 - `team.py` — `TeamInfo`, `team_summary`, `windowed_records`.
 
 `storage/`:
 - `db.py` — `init_db(path)` (WAL, `schema_version` table, `migrate()`).
-- `migrations.py` — `m001_initial` (legacy table), `m002_player_log_v2`.
+- `migrations.py` — `m001_initial` (legacy table), `m002_player_log_v2`, `m003_session`
+  (`session`, `session_game`).
 - `player_log.py` — peewee `PlayerLog` (v2) and `PlayerLogStore` (`record_game`, `rows_for`,
   `all_rows`).
-- `rows.py` — `PlayerLogRow` (no peewee import, used by `analyze`).
+- `session_store.py` — `SessionStore` (`current_session` with the 3 h rollover, `add_game`,
+  `set_mmr_after`, `games`, `latest_session`), plain SQL under a write lock.
+- `rows.py` — `PlayerLogRow`, `Session`, `SessionGame`, `SessionOpponent` (no peewee import,
+  used by `analyze`).
 
 `models/`:
 - `config.py` — config **v2** (`Config`, `AccountConfig`, `OverlayConfig`, `HotkeyConfig`,
@@ -175,7 +216,8 @@ Top level (`smurfsniper/`):
 `ui/` (PySide6; the only place widgets are created):
 - `hud.py` — `HudController`: owns the card, toast stack, panel slot and hint; slots
   `on_state`, `on_game_started`, `on_update`, `on_game_ended`, `on_hotkey`, `on_toast`,
-  `on_config`; `register_panel(action, title, build_body, ensure=)` for branch-5 panels;
+  `on_config`; `register_panel(action, title, build_body, ensure=)` (the app registers
+  Session and Rivals; `refresh_panel()` rebuilds an open one);
   `set_hidden()` (hide-all), `preview()` (Settings "Preview on screen"),
   `reset_for_new_game()` (stops every timer). Emits `hidden_changed`, `links_changed`.
 - `overlay/` — the overlay framework:
@@ -196,11 +238,15 @@ Top level (`smurfsniper/`):
   - `panel.py` — `Panel` (title + `[hotkey ✕]` chip header, `set_body`, `set_loading`),
     `PanelHost` (one slot: a panel's hotkey toggles it, another panel's swaps it).
   - `hint.py` — `HotkeyHint` pill (full list for the first 5 games of a run, then hide + card).
-- `panels/intel.py` — `build_intel_body()` (pro, Aligulac, earnings, Liquipedia extract, form,
-  maps, link types) and `links_of()` for the tray menu.
+- `panels/intel.py` — `build_intel_body()` (pro, Aligulac, earnings, Liquipedia extract, every
+  smurf reason, Tendencies: form, vs races, maps, length, usual hours, off-race; link types)
+  and `links_of()` for the tray menu.
+- `panels/session.py` — `build(snapshot, tokens)`: record, MMR movement, sparkline, streak,
+  time played, per-matchup records; the empty state is one row.
+- `panels/rivals.py` — `build(summary, tokens)`: nemesis / victim lines and the rivals list.
 - `fmt.py` — pure text helpers (league, top %, records, H2H, tendencies, flags, Aligulac);
   each returns None instead of a placeholder.
-- `preview_data.py` — typed fake profiles used by previews and tests.
+- `preview_data.py` — typed fake profiles, session games and rivals used by previews and tests.
 - `tokens.py` — design tokens (colours, radii, fonts, sizes, paddings, animation timings, smurf
   and PRO badge colours) and `TokenContext(opacity, scale, screen)` with `px()`; `theme.py` —
   QSS for normal windows built from the tokens.
@@ -215,18 +261,24 @@ Top level (`smurfsniper/`):
 ## Smurf detection heuristic
 
 `analyze/smurf.py::assess` computes a graded **0-100 smurf score** with reasons; levels:
-score ≥ 70 → "likely", ≥ 45 → "possible", ≥ 25 → "suspicious".
+score ≥ 70 → "likely", ≥ 45 → "possible", ≥ 25 → "suspicious". The total is capped at 100.
 
 | code | rule | points |
 |---|---|---|
 | `wr3d` | 3-day winrate ≥ 80% with 5+ games | +35 |
 | `wr7d` | 7-day winrate ≥ 75% with 8+ games | +25 |
 | `wrlife` | lifetime winrate ≥ 70% with 30+ games | +15 |
-| `age` | account ≤ 14 days (+30) or ≤ 30 days (+18) | |
-| `climb` | lifetime-average climb ≥ 15 MMR/day (+20) or ≥ 8 (+10) | |
+| `age` | account ≤ 14 days (+30) or ≤ 30 days (+18) | +30 / +18 |
+| `climb` | lifetime-average climb ≥ 15 MMR/day (+20) or ≥ 8 (+10) | +20 / +10 |
+| `alt_peak` | another character of the same account peaked ≥ 800 above the current MMR, or ≥ 400; only the strongest alt counts | +35 / +20 |
+| `peak_gap` | peak league ≥ 3 above the current one or peak MMR ≥ 1200 above; or ≥ 2 leagues / ≥ 700 MMR; not cumulative | +25 / +15 |
+| `off_race` | current race < 20% of games, main race 100+ games: its peak ≥ current + 300, otherwise | +20 / +8 |
 
-Age and climb need ≥ 5 rating points. Capped at 100. Win/loss now comes from SC2Pulse
-WINS/GAMES counters per team and season (rating-delta sign only as a fallback).
+`age` and `climb` need ≥ 5 rating points. `alt_peak`, `peak_gap` and the higher-peak
+`off_race` need a known `current_mmr`. Reasons sort by points; the card shows the top 2, the
+intel panel all of them. Win/loss comes from SC2Pulse WINS/GAMES counters per team and season
+(rating-delta sign only as a fallback). Alts come from `/characters?accountId=` (cached 1 h);
+`character-links` is for socials only.
 
 ## External services
 
@@ -281,6 +333,9 @@ and "Detect automatically" has not been chosen (`state.json`).
 - Player log: SQLite at `paths.db_path()` (user data dir), schema-versioned; opened by
   `storage.db.init_db()` at service start. One row per opponent per game, written on game end
   (idempotent on `game_uid`).
+- Sessions: `session` / `session_game` tables in the same DB. A new session starts after a 3 h
+  gap between games; each game keeps `mmr_before` / `mmr_after` (filled when SC2Pulse reports
+  the new rating) and its opponents as JSON.
 - HTTP cache: SQLite at `paths.http_cache_path()` (user cache dir), pruned on startup.
 - `state.json` in the user data dir: `first_run_done`, `picker_skipped`.
 - Single-instance lock: `paths.lock_path()` (system temp dir) via `QLockFile`.

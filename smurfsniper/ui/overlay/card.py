@@ -289,6 +289,10 @@ class OpponentSection(QWidget):
         color = (
             t.POSITIVE if h.wins > h.losses else t.NEGATIVE if h.losses > h.wins else t.TEXT_PRIMARY
         )
+        suffix = []
+        if h.rivalry:
+            rcolor = t.NEGATIVE if h.rivalry == "nemesis" else t.TEXT_MUTED
+            suffix = [Part("·", "caption", t.TEXT_MUTED), Part(h.rivalry, "caption", rcolor)]
         return Row.create(
             self.tokens,
             [
@@ -296,20 +300,26 @@ class OpponentSection(QWidget):
                 Part(rec, "body", color, 600),
                 Part("·", "caption", t.TEXT_MUTED),
                 Part(f"{ago(h.last, self._now())} ago", "caption", t.TEXT_SECONDARY),
+                *suffix,
             ],
         )
 
     def _row_tendencies(self) -> Row | None:
+        """One row: ``vs <your race> 78% (14)``, else ``avg 7:40 · 62% wins < 6min``."""
         v = self.tendencies
         if v is None:
             return None
-        avg = fmt.duration(v.avg_duration_s)
+        tend = v.data
+        vs = fmt.vs_race(tend, self.my_race)
+        if vs:
+            return Row.create(self.tokens, [Part(vs, "caption", t.TEXT_SECONDARY)])
+        avg = fmt.duration(tend.avg_duration_s)
         return Row.create(
             self.tokens,
             dotted(
                 [
-                    Part(fmt.vs_race(v.recent, self.my_race), "caption", t.TEXT_SECONDARY),
                     Part(f"avg {avg}" if avg else None, "caption", t.TEXT_SECONDARY),
+                    Part(fmt.short_wins(tend), "caption", t.WARNING),
                 ]
             ),
         )
