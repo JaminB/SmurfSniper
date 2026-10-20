@@ -1,6 +1,6 @@
 [project]
 name = "smurfsniper"
-version = "0.1.0"
+version = "0.2.0"
 description = "SmurfSniper doesn’t enjoy your SC2 matches. It audits them. One standard deviation into smurf territory and your opponent is no longer a player, just an entry in a spreadsheet with a very short future."
 authors = [
     { name = "JaminB" }
