@@ -132,13 +132,13 @@ def test_key_never_logged(client, monkeypatch):
 
 def test_registry_only_builds_aligulac_with_key():
     from smurfsniper.api.registry import build_clients
-    from smurfsniper.models.config import Aligulac, Config, Integrations, Me, Team
+    from smurfsniper.models.config import Config, IntegrationsConfig
 
-    cfg = Config(me=Me(mmr=3000, name="x"), team=Team(name="", mmr=0, members=[]))
+    cfg = Config()
     clients = build_clients(cfg, disk_cache=False)
     assert clients.aligulac is None and clients.liquipedia is not None
     clients.close()
-    cfg.integrations = Integrations(aligulac=Aligulac(api_key="k"))
+    cfg.integrations = IntegrationsConfig(aligulac_api_key="k")
     clients = build_clients(cfg, disk_cache=False)
     assert clients.aligulac is not None
     clients.close()

@@ -41,6 +41,7 @@ def tmp_dirs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Path]
     monkeypatch.setattr(paths, "data_dir", lambda: dirs["data"])
     monkeypatch.setattr(paths, "cache_dir", lambda: dirs["cache"])
     monkeypatch.setattr(paths, "log_dir", lambda: dirs["log"])
+    monkeypatch.setattr(paths, "lock_path", lambda: tmp_path / "smurfsniper.lock")
     return dirs
 
 

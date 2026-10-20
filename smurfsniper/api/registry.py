@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from smurfsniper.api import aligulac, liquipedia, sc2pulse
 from smurfsniper.api.aligulac import AligulacClient
@@ -14,6 +13,7 @@ from smurfsniper.api.sc2client.client import DEFAULT_URL, LocalSc2Client
 from smurfsniper.api.sc2pulse.client import SC2PulseClient
 from smurfsniper.api.transport import HttpTransport
 from smurfsniper.logger import logger
+from smurfsniper.models.config import Config
 
 HTTP_CACHE_FILE = "http_cache.sqlite3"
 
@@ -48,21 +48,12 @@ def make_cache(cache_dir: Path | None, *, disk_cache: bool = True) -> TieredCach
     return TieredCache(MemoryCache(max_entries=2048), disk)
 
 
-def _aligulac_key(config: Any) -> str:
-    integrations = getattr(config, "integrations", None)
-    al = getattr(integrations, "aligulac", None) if integrations else None
-    key = getattr(al, "api_key", "") if al else ""
-    if hasattr(key, "get_secret_value"):
-        key = key.get_secret_value()
-    return (key or "").strip()
-
-
 def build_clients(
-    config: Any,
+    config: Config,
     *,
     cache_dir: Path | None = None,
     disk_cache: bool = True,
-    sc2_url: str = DEFAULT_URL,
+    sc2_url: str | None = None,
     cache: TieredCache | None = None,
     liquipedia_contact: str | None = None,
 ) -> Clients:
@@ -86,7 +77,7 @@ def build_clients(
         )
     )
 
-    key = _aligulac_key(config)
+    key = config.aligulac_key
     ali = None
     if key:
         ali = AligulacClient(
@@ -99,20 +90,41 @@ def build_clients(
             )
         )
 
-    lp = LiquipediaClient(
-        HttpTransport(
-            service="liquipedia",
-            base_url=liquipedia.BASE_URL,
-            cache=cache,
-            limiter=liquipedia.make_limiter(),
-            headers=liquipedia.headers(liquipedia_contact),
+    lp = None
+    if config.integrations.liquipedia_enabled:
+        lp = LiquipediaClient(
+            HttpTransport(
+                service="liquipedia",
+                base_url=liquipedia.BASE_URL,
+                cache=cache,
+                limiter=liquipedia.make_limiter(),
+                headers=liquipedia.headers(
+                    liquipedia_contact or config.integrations.liquipedia_contact
+                ),
+            )
         )
-    )
 
     return Clients(
         sc2pulse=pulse,
         aligulac=ali,
         liquipedia=lp,
-        sc2=LocalSc2Client(sc2_url),
+        sc2=LocalSc2Client(sc2_url or config.advanced.sc2_client_url or DEFAULT_URL),
         cache=cache,
     )
+
+
+def validate_aligulac_key(key: str) -> bool:
+    """One uncached request to check an Aligulac key (blocking; call off the GUI thread)."""
+    client = AligulacClient(
+        HttpTransport(
+            service="aligulac",
+            base_url=aligulac.BASE_URL,
+            cache=None,
+            limiter=aligulac.make_limiter(),
+            default_params=aligulac.client.default_params(key.strip()),
+        )
+    )
+    try:
+        return client.validate_key()
+    finally:
+        client.transport.close()

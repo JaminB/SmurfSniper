@@ -1,0 +1,46 @@
+me:
+  mmr: 4200
+  name: Hero
+team:
+  name: Squad
+  mmr: 4000
+  members:
+    - Buddy
+    - Pal
+preferences:
+  1v1_overlay:
+    visible: true
+    orientation: horizontal
+    position: top_right
+    seconds_delay_before_show: 0
+    seconds_visible: 20
+  2v2_overlay:
+    visible: true
+    orientation: vertical
+    position: bottom_left
+    seconds_delay_before_show: 2
+    seconds_visible: 30
+  team_overlay:
+    visible: false
+    orientation: horizontal
+    position: center
+    seconds_delay_before_show: 0
+    seconds_visible: 30
+  overlay_player_log_1:
+    visible: true
+    orientation: horizontal
+    position: top_left
+    seconds_delay_before_show: 0
+    seconds_visible: 30
+  overlay_player_log_2:
+    visible: true
+    orientation: horizontal
+    position: top_left
+    seconds_delay_before_show: 0
+    seconds_visible: 30
+integrations:
+  aligulac:
+    api_key: ALIG-KEY-1234
+  aws_bedrock:
+    api_key: FAKE-SECRET-NOT-REAL-9999
+    region: us-east-1
