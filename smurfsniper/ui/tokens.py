@@ -1,8 +1,15 @@
-"""Design tokens shared by every window. All pixel values are at scale 1.0."""
+"""Design tokens shared by every window. All pixel values are at scale 1.0.
+
+Overlay code never hard-codes a size or colour: it goes through ``TokenContext``,
+which applies the configured opacity and scale (``px``) to these values.
+"""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 FONT_FAMILIES = ["Segoe UI Variable Text", "Segoe UI", "Inter", "Arial"]
+EMOJI_FAMILIES = ["Segoe UI Emoji", "Noto Color Emoji", "Apple Color Emoji"]
 FONT_FAMILY_CSS = '"Segoe UI Variable Text", "Segoe UI", Inter, sans-serif'
 FONT_MONO = ["Cascadia Mono", "Consolas"]
 FONT_MONO_CSS = '"Cascadia Mono", Consolas, monospace'
@@ -38,6 +45,15 @@ RACE_ACCENT = {
 }
 RACE_GLYPH = {"ZERG": "Z", "TERRAN": "T", "PROTOSS": "P", "RANDOM": "R"}
 
+SMURF_BADGE = {  # level -> (fg, bg rgba, border rgba)
+    "suspicious": ((253, 230, 138), (234, 179, 8, 46), (234, 179, 8, 110)),
+    "possible": ((254, 215, 170), (249, 115, 22, 51), (249, 115, 22, 120)),
+    "likely": ((254, 202, 202), (239, 68, 68, 56), (239, 68, 68, 140)),
+}
+SMURF_LABEL = {"suspicious": "SUSPICIOUS", "possible": "POSSIBLE SMURF", "likely": "LIKELY SMURF"}
+SMURF_SHORT = {"suspicious": "SUSPICIOUS", "possible": "POSSIBLE", "likely": "LIKELY"}
+PRO_BADGE = ((165, 243, 252), (34, 211, 238, 46), (34, 211, 238, 120))
+
 CHIP = {
     "fg": (229, 231, 235),
     "bg": (255, 255, 255, 26),
@@ -45,6 +61,38 @@ CHIP = {
     "pad_x": 6,
     "pad_y": 2,
     "font": "mono",
+}
+
+SIZE = {
+    "card_min_w": 248,
+    "card_max_w": 320,
+    "toast_w": 288,
+    "panel_w": 360,
+    "panel_max_h": 520,
+    "hint_h": 28,
+    "row_h": 18,
+    "badge_h": 18,
+    "sparkline_chars": 12,
+}
+PADDING = {  # (vertical, horizontal)
+    "card": (10, 12),
+    "toast": (10, 12),
+    "panel": (12, 14),
+    "panel_header": (8, 12),
+    "hint": (4, 12),
+}
+GAP = {"row": 4, "section": 8, "toast_stack": 8, "inline": 6}
+
+ANIM = {  # (ms, QEasingCurve name)
+    "fade_in": (160, "OutCubic"),
+    "fade_out": (220, "InCubic"),
+    "slide_px": 12,
+    "slide_in": (180, "OutCubic"),
+    "row_reveal": (140, "OutCubic"),
+    "card_resize": (140, "OutCubic"),
+    "toast_default_ms": 6000,
+    "toast_recap_ms": 10000,
+    "hint_ms": 6000,
 }
 
 
@@ -58,3 +106,36 @@ def css(color: tuple[int, ...]) -> str:
     if len(color) == 3:
         return f"rgb({color[0]}, {color[1]}, {color[2]})"
     return f"rgba({color[0]}, {color[1]}, {color[2]}, {color[3] / 255:.3f})"
+
+
+def alpha(opacity: float) -> int:
+    """Surface opacity (0-1) -> 0-255 alpha, clamped."""
+    return max(0, min(255, round(opacity * 255)))
+
+
+@dataclass(frozen=True)
+class TokenContext:
+    """Live overlay settings applied to the tokens. Immutable; rebuilt on config change."""
+
+    opacity: float = 0.70
+    scale: float = 1.0
+    screen: int | None = None
+
+    @classmethod
+    def from_overlays(cls, ov) -> TokenContext:
+        """From an ``OverlayConfig`` (duck-typed: ``opacity``, ``scale``, ``screen``)."""
+        return cls(opacity=ov.opacity, scale=ov.scale, screen=ov.screen)
+
+    def px(self, value: float) -> int:
+        return px(value, self.scale)
+
+    @property
+    def surface_alpha(self) -> int:
+        return alpha(self.opacity)
+
+    @property
+    def raised_alpha(self) -> int:
+        return alpha(min(self.opacity + 0.10, 1.0))
+
+    def font_px(self, role: str) -> int:
+        return max(1, self.px(FONT_SIZE[role]))

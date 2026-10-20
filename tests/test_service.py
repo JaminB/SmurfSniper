@@ -8,10 +8,12 @@ from smurfsniper.api import transport as tr
 from smurfsniper.api.registry import build_clients
 from smurfsniper.app.sounds import SoundPlayer
 from smurfsniper.core.events import EventBus
+from smurfsniper.core.profile import Stage
 from smurfsniper.models.config import AccountConfig, Config
 from smurfsniper.service import Service
 from smurfsniper.storage.db import init_db
 from smurfsniper.storage.player_log import PlayerLogStore
+from smurfsniper.ui.hud import HudController
 
 SC2 = "http://localhost:6119"
 
@@ -35,20 +37,23 @@ def test_full_game_flow(qtbot, tmp_path, fixture_json, pulse, monkeypatch):
     clients = build_clients(cfg, disk_cache=False)
     bus = EventBus()
     service = Service(cfg, clients, store, bus, sounds=SoundPlayer(enabled=False))
-    service.renderer._show = False
-    rendered: list[str] = []
-    service.renderer.rendered.connect(lambda k, g: rendered.append(k))
+    hud = HudController(bus, service.pipeline, cfg)
     ended = []
     bus.game_ended.connect(ended.append)
 
     service.start()
     service.poller.ui_interval_ms = 50
     try:
-        qtbot.waitUntil(lambda: "main" in rendered, timeout=8000)
+        qtbot.waitUntil(lambda: hud.card.shown, timeout=8000)
+        qtbot.waitUntil(
+            lambda: bool(hud.profiles) and hud.profiles[0].done(Stage.SMURF), timeout=8000
+        )
+        assert any("MMR" in txt for txt in hud.card.texts())
         game.mock(return_value=httpx.Response(200, json=fixture_json("game_result")))
         qtbot.waitUntil(lambda: bool(ended), timeout=8000)
         qtbot.waitUntil(lambda: len(store.all_rows()) == 1, timeout=5000)
     finally:
+        hud.reset_for_new_game()
         service.stop()
         db.close()
     row = store.all_rows()[0]

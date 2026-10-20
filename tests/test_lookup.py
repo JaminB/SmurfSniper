@@ -10,13 +10,14 @@ from smurfsniper.api import transport as tr
 from smurfsniper.api.registry import build_clients
 from smurfsniper.api.sc2client.models import GamePlayer
 from smurfsniper.api.sc2pulse import BASE_URL
+from smurfsniper.core.events import EventBus
 from smurfsniper.core.game_state import GameContext
 from smurfsniper.core.lookup import TEAM_SLOT, LookupPipeline
 from smurfsniper.core.profile import LookupUpdate, Stage
 from smurfsniper.models.config import Config
 from smurfsniper.storage.db import init_db
 from smurfsniper.storage.player_log import PlayerLogStore
-from smurfsniper.ui.legacy_render import LegacyRenderer
+from smurfsniper.ui.hud import HudController
 
 CORE = {Stage.IDENTITY, Stage.RATING, Stage.SMURF, Stage.H2H, Stage.TENDENCIES}
 
@@ -176,20 +177,18 @@ def test_team_stage_for_2v2(qtbot, pulse, pipeline, fixture_json):
     assert t.data is not None and t.data.team.rating == 8127
 
 
-def test_stale_updates_dropped_by_legacy_consumer(qtbot, pulse, pipeline):
-    renderer = LegacyRenderer(config(), show=False)
-    pipeline.update.connect(renderer.on_update)
-    rendered: list[tuple[str, int]] = []
-    renderer.rendered.connect(lambda k, g: rendered.append((k, g)))
-
+def test_stale_updates_dropped_by_hud(qtbot, pulse, pipeline):
+    hud = HudController(EventBus(), pipeline, config())
     c1 = ctx(1)
-    renderer.on_game_started(c1)
+    hud.on_game_started(c1)
     pipeline.start(c1)
     # A new game starts before game 1's lookups land.
     c2 = ctx(2)
-    renderer.on_game_started(c2)
-    renderer.on_update(LookupUpdate(1, 0, Stage.IDENTITY, None))
-    assert renderer.dropped >= 1
+    hud.on_game_started(c2)
+    hud.on_update(LookupUpdate(1, 0, Stage.IDENTITY, None))
+    assert hud.dropped >= 1
     pipeline.start(c2)
-    qtbot.waitUntil(lambda: ("main", 2) in rendered, timeout=5000)
-    assert all(g == 2 for _, g in rendered)
+    qtbot.waitUntil(lambda: hud.profiles[0].done(Stage.SMURF), timeout=5000)
+    assert hud.game_id == 2 and hud.card.game_id == 2
+    assert hud.profiles[0].rating is not None
+    hud.reset_for_new_game()

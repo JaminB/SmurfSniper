@@ -57,6 +57,10 @@ class TrayController(QObject):
         self.settings_action.triggered.connect(lambda: on_settings())
         self.account_action = self.menu.addAction("Change account…")
         self.account_action.triggered.connect(lambda: on_account())
+        self.links_menu = QMenu("Last opponent links", self.menu)
+        self.links_menu.setStyleSheet(stylesheet())
+        self.menu.addMenu(self.links_menu)
+        self.set_links([])
         self.menu.addSeparator()
 
         self.pause_action = self.menu.addAction("Pause lookups")
@@ -105,6 +109,20 @@ class TrayController(QObject):
     def set_hotkeys(self, hotkeys: HotkeyConfig) -> None:
         """Show the hide-all binding next to the menu entry."""
         self.hide_action.setText(f"Hide HUD\t{to_display(hotkeys.hide_all)}")
+
+    def set_links(self, links: list[tuple[str, str]]) -> None:
+        """Rebuild "Last opponent links": one entry per URL, opened in the browser."""
+        self.links_menu.clear()
+        if not links:
+            empty = self.links_menu.addAction("None yet")
+            empty.setEnabled(False)
+            return
+        for label, url in links:
+            act = self.links_menu.addAction(label)
+            act.triggered.connect(lambda _=False, u=url: QDesktopServices.openUrl(QUrl(u)))
+
+    def link_labels(self) -> list[str]:
+        return [a.text() for a in self.links_menu.actions()]
 
     def set_hud_hidden(self, hidden: bool) -> None:
         if self.hide_action.isChecked() != hidden:

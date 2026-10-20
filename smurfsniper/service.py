@@ -1,7 +1,7 @@
-"""Wires the SC2 poller -> event bus -> lookup pipeline -> legacy overlays.
+"""Wires the SC2 poller -> event bus -> lookup pipeline (the HUD subscribes to both).
 
-Hotkeys live in ``app.hotkeys``; ``SmurfSniperApp`` routes them to the public
-``request_*`` / ``toggle_*`` methods here (all called on the main thread).
+Hotkeys live in ``app.hotkeys``; ``SmurfSniperApp`` routes re-detect here and every
+HUD hotkey to ``ui.hud.HudController`` (all on the main thread).
 
 Threads:
 - main: Qt event loop, all widgets, this ``Service``.
@@ -24,12 +24,10 @@ from smurfsniper.core.account import AccountService
 from smurfsniper.core.events import EventBus
 from smurfsniper.core.game_state import GameContext, GameResult, GameState, Sc2ClientPoller
 from smurfsniper.core.lookup import LookupPipeline
-from smurfsniper.core.profile import Stage
 from smurfsniper.logger import logger
 from smurfsniper.models.config import Config
 from smurfsniper.storage.player_log import PlayerLogStore
-from smurfsniper.ui.legacy_render import RACE_LABEL, LegacyRenderer
-from smurfsniper.ui.overlay_manager import close_all_overlays
+from smurfsniper.ui.fmt import RACE_LABEL
 
 
 class Service(QObject):
@@ -64,7 +62,6 @@ class Service(QObject):
             my_region=lambda: self.config.account.region,
             mmr_window=lambda: self.config.advanced.mmr_window,
         )
-        self.renderer = LegacyRenderer(config, chime=self.sounds.play)
         self.poller: Sc2ClientPoller | None = None
         self._thread: QThread | None = None
 
@@ -97,7 +94,6 @@ class Service(QObject):
         self.bus.game_started.connect(self._on_game_started)
         self.bus.game_ended.connect(self._on_game_ended)
         self.bus.state_changed.connect(self._on_state_changed)
-        self.pipeline.update.connect(self.renderer.on_update)
         self.redetect_requested.connect(self.poller.force_redetect)
 
         if self.clients.cache.disk is not None:
@@ -134,37 +130,9 @@ class Service(QObject):
         self.sounds.play("one")
         self.redetect_requested.emit()
 
-    def toggle_opponent_card(self) -> None:
-        """Show the cached opponent card again, or close it. No network calls."""
-        self.renderer.toggle("main")
-
-    def toggle_intel(self) -> None:
-        """Show scouting intel (fetching it once if needed), or close it."""
-        gid = self.pipeline.game_id
-        if gid is None:
-            logger.info("Intel: no current opponent to look up.")
-            return
-        if self.renderer.is_open("intel"):
-            self.renderer.toggle("intel")
-            return
-        self.sounds.play("one")
-        self.renderer.request_intel()
-        for slot in self.renderer.profiles:
-            self.pipeline.ensure(gid, slot, Stage.INTEL)
-            self.pipeline.ensure(gid, slot, Stage.TENDENCIES)
-
-    @property
-    def hud_hidden(self) -> bool:
-        return self.renderer.hidden
-
-    def toggle_hide_all(self) -> bool:
-        self.renderer.set_hidden(not self.renderer.hidden)
-        return self.renderer.hidden
-
     def set_paused(self, paused: bool) -> None:
         self.paused = paused
         if paused:
-            self.renderer.reset()
             self.pipeline.cancel()
         self._announce_state()
 
@@ -176,7 +144,6 @@ class Service(QObject):
         self._ctx = ctx
         if self.account is not None:
             self.account.observe_game(ctx)
-        self.renderer.on_game_started(ctx)
         if self.paused:
             logger.info("Lookups paused: skipping this game")
         else:
@@ -186,7 +153,6 @@ class Service(QObject):
     @Slot(object)
     def _on_game_ended(self, result: GameResult) -> None:
         logger.info(f"Game {result.context.game_id} ended: {result.my_result or 'unknown'}")
-        close_all_overlays()
         if result.context.vs_ai:
             return
         if self.account is not None:

@@ -29,7 +29,7 @@ from smurfsniper.storage.db import init_db
 from smurfsniper.storage.player_log import PlayerLogStore
 from smurfsniper.ui.account_picker import AccountPickerDialog
 from smurfsniper.ui.cheatsheet import HotkeyCheatSheet
-from smurfsniper.ui.overlays import show_sample
+from smurfsniper.ui.hud import HudController
 from smurfsniper.ui.settings import SettingsHooks, SettingsWindow
 
 SAVE_DEBOUNCE_MS = 500
@@ -84,6 +84,7 @@ class SmurfSniperApp(QObject):
         self.settings: SettingsWindow | None = None
         self.picker: AccountPickerDialog | None = None
         self.cheatsheet: HotkeyCheatSheet | None = None
+        self.hud: HudController | None = None
         self._db = None
         self._executor: ThreadPoolExecutor | None = None
         self._lock: QLockFile | None = None
@@ -145,6 +146,8 @@ class SmurfSniperApp(QObject):
         self.service = Service(
             cfg, self.clients, store, self.bus, sounds=sounds, account=self.account
         )
+        # Created before Service.start() so the HUD sees game_started before lookups run.
+        self.hud = HudController(self.bus, self.service.pipeline, cfg, chime=sounds.play)
         self.hotkeys = HotkeyManager(cfg.hotkeys)
         self.hotkeys.triggered.connect(self._on_hotkey)
 
@@ -153,7 +156,8 @@ class SmurfSniperApp(QObject):
         self.account.mmr_refreshed.connect(self._on_mmr_refreshed)
         self.account.needs_picker.connect(self._on_needs_picker)
         self.service.state_text_changed.connect(self._on_state_text)
-        self.service.renderer.hidden_changed.connect(self._on_hidden_changed)
+        self.hud.hidden_changed.connect(self._on_hidden_changed)
+        self.hud.links_changed.connect(self._on_links_changed)
 
         if self.use_tray:
             self._build_tray()
@@ -183,6 +187,8 @@ class SmurfSniperApp(QObject):
             self._wake.stop()
         if self.hotkeys is not None:
             self.hotkeys.stop()
+        if self.hud is not None:
+            self.hud.dismiss_all()
         if self.tray is not None:
             self.tray.hide()
         if self._save_timer.isActive():
@@ -282,21 +288,11 @@ class SmurfSniperApp(QObject):
         self.handle_hotkey(HotkeyAction(action))
 
     def handle_hotkey(self, action: HotkeyAction) -> None:
-        svc = self.service
-        if svc is None:
-            return
         if action is HotkeyAction.REDETECT:
-            svc.request_redetect()
-        elif action is HotkeyAction.HIDE_ALL:
-            hidden = svc.toggle_hide_all()
-            if self.tray is not None:
-                self.tray.set_hud_hidden(hidden)
-        elif action is HotkeyAction.OPPONENT_CARD:
-            svc.toggle_opponent_card()
-        elif action is HotkeyAction.INTEL:
-            svc.toggle_intel()
-        else:
-            logger.info(f"{action.value}: available in a later version")
+            if self.service is not None:
+                self.service.request_redetect()
+        elif self.hud is not None:
+            self.hud.on_hotkey(action.value)
 
     # --------------------------------------------------------------------- tray
     def _build_tray(self) -> None:
@@ -322,10 +318,12 @@ class SmurfSniperApp(QObject):
     def _on_pause(self, paused: bool) -> None:
         if self.service is not None:
             self.service.set_paused(paused)
+        if paused and self.hud is not None:
+            self.hud.dismiss_all()
 
     def _on_hide(self, hidden: bool) -> None:
-        if self.service is not None:
-            self.service.renderer.set_hidden(hidden)
+        if self.hud is not None:
+            self.hud.set_hidden(hidden)
 
     def _on_sounds(self, on: bool) -> None:
         self.config.advanced.sounds_enabled = on
@@ -344,6 +342,11 @@ class SmurfSniperApp(QObject):
     def _on_hidden_changed(self, hidden: bool) -> None:
         if self.tray is not None:
             self.tray.set_hud_hidden(hidden)
+
+    @Slot(list)
+    def _on_links_changed(self, links: list) -> None:
+        if self.tray is not None:
+            self.tray.set_links(links)
 
     # ------------------------------------------------------------------ dialogs
     def show_cheatsheet(self) -> None:
@@ -383,11 +386,15 @@ class SmurfSniperApp(QObject):
             cache_stats=self._cache_stats,
             clear_cache=lambda: self.clients.cache.clear() if self.clients else None,
             open_path=self._open_path,
-            preview=show_sample,
+            preview=self._preview,
             suspend_hotkeys=lambda: self.hotkeys.suspend() if self.hotkeys else None,
             resume_hotkeys=lambda: self.hotkeys.resume() if self.hotkeys else None,
             version=__version__,
         )
+
+    def _preview(self, config: Config) -> None:
+        if self.hud is not None:
+            self.hud.preview(config)
 
     def _cache_stats(self) -> tuple[int, int] | None:
         disk = self.clients.cache.disk if self.clients else None
