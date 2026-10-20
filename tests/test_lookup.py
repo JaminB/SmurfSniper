@@ -10,13 +10,13 @@ from smurfsniper.api import transport as tr
 from smurfsniper.api.registry import build_clients
 from smurfsniper.api.sc2client.models import GamePlayer
 from smurfsniper.api.sc2pulse import BASE_URL
+from smurfsniper.core.events import EventBus
 from smurfsniper.core.game_state import GameContext
 from smurfsniper.core.lookup import TEAM_SLOT, LookupPipeline
 from smurfsniper.core.profile import LookupUpdate, Stage
 from smurfsniper.models.config import Config
 from smurfsniper.storage.db import init_db
 from smurfsniper.storage.player_log import PlayerLogStore
-from smurfsniper.core.events import EventBus
 from smurfsniper.ui.hud import HudController
 
 CORE = {Stage.IDENTITY, Stage.RATING, Stage.SMURF, Stage.H2H, Stage.TENDENCIES}

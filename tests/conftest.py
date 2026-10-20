@@ -3,6 +3,10 @@ from __future__ import annotations
 import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+if os.name == "nt":  # real fonts for the offscreen platform, so text metrics are realistic
+    os.environ.setdefault(
+        "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
+    )
 
 import json
 from collections.abc import Callable
@@ -86,3 +90,13 @@ def pulse(fixture_json):
             ),
         }
         yield mock, routes
+
+
+@pytest.fixture
+def no_anim():
+    """Overlay animations off: geometry, show and hide take effect immediately."""
+    from smurfsniper.ui.overlay import set_animations_enabled
+
+    set_animations_enabled(False)
+    yield
+    set_animations_enabled(True)
