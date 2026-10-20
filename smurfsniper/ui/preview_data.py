@@ -10,9 +10,11 @@ from datetime import UTC, datetime, timedelta
 
 from smurfsniper.analyze.h2h import H2HInfo
 from smurfsniper.analyze.history import Record, Trend
-from smurfsniper.analyze.matches import RecentResult
+from smurfsniper.analyze.rivals import Rival, RivalsSummary
+from smurfsniper.analyze.session import SessionSnapshot, snapshot
 from smurfsniper.analyze.smurf import SmurfAssessment, SmurfReason
 from smurfsniper.analyze.team import TeamInfo
+from smurfsniper.analyze.tendencies import Tendencies
 from smurfsniper.api.aligulac.models import AligulacPlayer
 from smurfsniper.api.liquipedia.models import PageSummary
 from smurfsniper.api.sc2pulse.models import (
@@ -38,6 +40,7 @@ from smurfsniper.core.profile import (
     Stage,
     TendenciesInfo,
 )
+from smurfsniper.storage.rows import SessionGame, SessionOpponent
 
 NOW = datetime(2026, 10, 19, 20, 0, tzinfo=UTC)
 _IDS = iter(range(1000, 100000))
@@ -88,21 +91,30 @@ def _rating(mmr: int, league: int, tier: int | None, pct: float, w: int, lo: int
     )
 
 
-def _recent(results: str, opp_races: str, maps: list[str], secs: int) -> list[RecentResult]:
-    races = {"Z": "ZERG", "T": "TERRAN", "P": "PROTOSS"}
-    out = []
-    for i, ch in enumerate(results):
-        out.append(
-            RecentResult(
-                ts=NOW - timedelta(hours=3 * i + 1),
-                won=ch == "W",
-                map=maps[i % len(maps)],
-                duration_s=secs + 37 * (i % 5) - 60,
-                race="ZERG",
-                opponent_race=races[opp_races[i % len(opp_races)]],
-            )
+def _tendencies() -> TendenciesInfo:
+    return TendenciesInfo(
+        Tendencies(
+            games=25,
+            vs_race={
+                "ZERG": Record(11, 3),
+                "TERRAN": Record(4, 4),
+                "PROTOSS": Record(6, 1),
+            },
+            maps={
+                "Alcyone LE": Record(4, 1),
+                "Rainfall LE": Record(3, 0),
+                "Pylon LE": Record(2, 1),
+            },
+            avg_duration_s=460,
+            short_win_rate=0.62,
+            form=("W", "W", "L", "W", "W", "W", "L", "L", "W", "W"),
+            streak=("W", 2),
+            active_hours=None,
+            peak_hours=(20, 23),
+            race_switches=4,
+            races_played={"ZERG": 21, "TERRAN": 4},
         )
-    return out
+    )
 
 
 # ------------------------------------------------------------------- profiles
@@ -154,16 +166,10 @@ def smurf_profile() -> OpponentProfile:
             sparkline="▁▂▂▃▃▄▅▆▆▇█",
             records={"3d": Record(9, 1), "7d": Record(15, 3)},
         ),
-        h2h=H2HInfo(1, 0, 1, 0, NOW - timedelta(days=3), NOW - timedelta(days=3)),
-        tendencies=TendenciesInfo(
-            recent=_recent("WWLWWWLLWW", "ZZTZP", ["Alcyone LE", "Rainfall LE", "Pylon LE"], 460),
-            maps={
-                "Alcyone LE": Record(4, 1),
-                "Rainfall LE": Record(3, 0),
-                "Pylon LE": Record(2, 1),
-            },
-            avg_duration_s=460,
+        h2h=H2HInfo(
+            3, 1, 2, 0, NOW - timedelta(days=30), NOW - timedelta(days=3), rivalry="nemesis"
         ),
+        tendencies=_tendencies(),
     )
 
 
@@ -266,3 +272,72 @@ def updates_for(game_id: int, slot: int, prof: OpponentProfile) -> list[LookupUp
         if data is not None:
             out.append(LookupUpdate(game_id, slot, stage, data))
     return out
+
+
+# --------------------------------------------------------- session and rivals
+def session_games() -> list[SessionGame]:
+    """Ten 1v1 games (7-3) over 1h 42m with the rating known after most of them."""
+    results = "WWLWWLWWLW"
+    races = [
+        "ZERG",
+        "TERRAN",
+        "ZERG",
+        "PROTOSS",
+        "TERRAN",
+        "ZERG",
+        "PROTOSS",
+        "ZERG",
+        "TERRAN",
+        "ZERG",
+    ]
+    mmr = 4152
+    out = []
+    for i, (ch, race) in enumerate(zip(results, races, strict=True)):
+        before = mmr
+        mmr += 17 if ch == "W" else -15
+        end = NOW - timedelta(minutes=10 * (len(results) - i))
+        out.append(
+            SessionGame(
+                session_id=1,
+                game_uid=f"preview-{i}",
+                started_at=end - timedelta(minutes=9),
+                ended_at=end,
+                mode="1v1",
+                my_result="victory" if ch == "W" else "defeat",
+                my_race="ZERG",
+                opponents=(SessionOpponent(f"Opp{i}", race),),
+                mmr_before=before,
+                mmr_after=mmr,
+                game_seconds=520 + 31 * i,
+            )
+        )
+    return out
+
+
+def session_snapshot(games: int | None = None) -> SessionSnapshot:
+    gs = session_games()[: games if games is not None else None]
+    return snapshot(
+        gs,
+        mmr_start=gs[0].mmr_before if gs else None,
+        started_at=NOW - timedelta(hours=1, minutes=42),
+    )
+
+
+def rivals_summary() -> RivalsSummary:
+    def rival(name, race, w, lo, days, mmr):
+        return Rival(
+            name=name,
+            region="EU",
+            battlenet_id=hash(name) % 10_000,
+            games=w + lo,
+            record=Record(w, lo),
+            last_played=NOW - timedelta(days=days),
+            last_mmr=mmr,
+            last_race=race,
+        )
+
+    bob = rival("Bob", "ZERG", 2, 6, 3, 4300)
+    alice = rival("Alice", "PROTOSS", 7, 1, 7, 3900)
+    carl = rival("Carl", "TERRAN", 3, 3, 14, 4100)
+    dana = rival("Dana", "ZERG", 1, 3, 20, 4500)
+    return RivalsSummary(top=(bob, alice, carl, dana), nemesis=bob, favourite_victim=alice)

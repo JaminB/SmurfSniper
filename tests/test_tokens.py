@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-
 from smurfsniper.analyze.history import Record
-from smurfsniper.analyze.matches import RecentResult
 from smurfsniper.analyze.smurf import LEVELS
+from smurfsniper.analyze.tendencies import Tendencies
 from smurfsniper.ui import fmt, theme
 from smurfsniper.ui import tokens as t
 from smurfsniper.ui.tokens import TokenContext, alpha, px
@@ -93,12 +91,24 @@ def test_fmt_intel_bits():
 
 
 def test_fmt_vs_race_needs_enough_games():
-    now = datetime(2026, 10, 19, tzinfo=UTC)
-
-    def r(won: bool, race: str) -> RecentResult:
-        return RecentResult(now - timedelta(hours=1), won, "Map", 600, "ZERG", race)
-
-    recent = [r(True, "ZERG"), r(True, "ZERG"), r(False, "ZERG"), r(True, "TERRAN")]
-    assert fmt.vs_race(recent, "ZERG") == "vs Z 67%"
-    assert fmt.vs_race(recent, "TERRAN") is None
-    assert fmt.vs_race(recent, None) is None
+    tend = Tendencies(
+        games=20,
+        vs_race={"ZERG": Record(11, 3), "TERRAN": Record(2, 2)},
+        maps={},
+        avg_duration_s=None,
+        short_win_rate=0.62,
+        form=(),
+        streak=None,
+        active_hours=None,
+        peak_hours=(20, 23),
+        race_switches=4,
+        races_played={},
+    )
+    assert fmt.vs_race(tend, "ZERG") == "vs Z 79% (14)"
+    assert fmt.vs_race(tend, "TERRAN") is None  # fewer than 5 games
+    assert fmt.vs_race(tend, "PROTOSS") is None
+    assert fmt.vs_race(tend, None) is None
+    assert fmt.vs_races_line(tend) == "vZ 11-3 · vT 2-2"
+    assert fmt.short_wins(tend) == "62% wins < 6min"
+    assert fmt.hour_range((20, 23)) == "20:00–23:00"
+    assert fmt.off_race(tend) == "Off-race: 4 of last 20"

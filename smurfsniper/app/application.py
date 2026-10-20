@@ -22,14 +22,20 @@ from smurfsniper.app.tray import TrayController
 from smurfsniper.assets import asset_path
 from smurfsniper.core.account import AccountCandidate, AccountService
 from smurfsniper.core.events import EventBus
+from smurfsniper.core.recap import RecapService
+from smurfsniper.core.rivals import RivalsCache
+from smurfsniper.core.session import SessionTracker
 from smurfsniper.logger import logger, setup_logging
 from smurfsniper.models.config import Config, save_config
 from smurfsniper.service import Service
 from smurfsniper.storage.db import init_db
 from smurfsniper.storage.player_log import PlayerLogStore
+from smurfsniper.storage.session_store import SessionStore
 from smurfsniper.ui.account_picker import AccountPickerDialog
 from smurfsniper.ui.cheatsheet import HotkeyCheatSheet
 from smurfsniper.ui.hud import HudController
+from smurfsniper.ui.panels import rivals as rivals_panel
+from smurfsniper.ui.panels import session as session_panel
 from smurfsniper.ui.settings import SettingsHooks, SettingsWindow
 
 SAVE_DEBOUNCE_MS = 500
@@ -85,6 +91,9 @@ class SmurfSniperApp(QObject):
         self.picker: AccountPickerDialog | None = None
         self.cheatsheet: HotkeyCheatSheet | None = None
         self.hud: HudController | None = None
+        self.session: SessionTracker | None = None
+        self.recap: RecapService | None = None
+        self.rivals: RivalsCache | None = None
         self._db = None
         self._executor: ThreadPoolExecutor | None = None
         self._lock: QLockFile | None = None
@@ -148,6 +157,7 @@ class SmurfSniperApp(QObject):
         )
         # Created before Service.start() so the HUD sees game_started before lookups run.
         self.hud = HudController(self.bus, self.service.pipeline, cfg, chime=sounds.play)
+        self._start_panels(store, cfg)
         self.hotkeys = HotkeyManager(cfg.hotkeys)
         self.hotkeys.triggered.connect(self._on_hotkey)
 
@@ -178,6 +188,39 @@ class SmurfSniperApp(QObject):
         if not self.headless:
             QTimer.singleShot(0, self._first_run)
 
+    def _start_panels(self, store: PlayerLogStore, cfg: Config) -> None:
+        """Session tracker, rivals, the post-game recap and their hotkey panels."""
+        assert self.hud is not None and self.service is not None and self.account is not None
+        hud = self.hud
+        self.session = SessionTracker(
+            self.bus,
+            SessionStore(self._db),
+            self.service.pipeline,
+            mmr_for=lambda queue: cfg.account.mmr_for(queue),
+            character_id=lambda: cfg.account.character_id,
+        )
+        self.session.load()
+        self.recap = RecapService(self.bus, self.session)
+        self.rivals = RivalsCache(store, self.bus)
+        self.account.mmr_refreshed.connect(self.session.on_mmr_refreshed)
+        self.account.mmr_refreshed.connect(self.recap.on_mmr_refreshed)
+        self.service.game_logged.connect(self.rivals.invalidate)
+
+        session, rivals = self.session, self.rivals
+        hud.register_panel(
+            HotkeyAction.SESSION,
+            "Session",
+            build_body=lambda: session_panel.build(session.current(), hud.tokens),
+        )
+        hud.register_panel(
+            HotkeyAction.RIVALS,
+            "Rivals",
+            build_body=lambda: rivals_panel.build(rivals.summary(), hud.tokens),
+            ensure=rivals.refresh,
+        )
+        self.bus.session_updated.connect(lambda _snap: hud.refresh_panel(HotkeyAction.SESSION))
+        rivals.ready.connect(lambda _summary: hud.refresh_panel(HotkeyAction.RIVALS))
+
     def shutdown(self) -> None:
         if self._wake is not None:
             self._wake.stop()
@@ -193,6 +236,10 @@ class SmurfSniperApp(QObject):
         self.save_now()
         if self.service is not None:
             self.service.stop()
+        if self.session is not None:
+            self.session.shutdown()
+        if self.rivals is not None:
+            self.rivals.shutdown()
         if self._executor is not None:
             self._executor.shutdown(wait=False, cancel_futures=True)
         if self._db is not None:

@@ -7,22 +7,17 @@ without Qt.
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 
 from smurfsniper.analyze.history import Record
-from smurfsniper.analyze.matches import RecentResult
+from smurfsniper.analyze.tendencies import Tendencies
 from smurfsniper.api.sc2pulse.ids import League
+from smurfsniper.textutil import RACE_LABEL, SEP, duration, join
 
-RACE_LABEL = {"TERRAN": "Terran", "PROTOSS": "Protoss", "ZERG": "Zerg", "RANDOM": "Random"}
+__all__ = ["RACE_LABEL", "SEP", "duration", "join"]  # shared helpers, re-exported for the UI
+
 RACE_INITIAL = {"TERRAN": "T", "PROTOSS": "P", "ZERG": "Z", "RANDOM": "R"}
 RECORD_WINDOWS = ("3d", "7d", "30d", "season")
-SEP = " · "
-
-
-def join(parts: Sequence[str | None], sep: str = SEP) -> str | None:
-    """Join the non-empty parts; None if there are none."""
-    kept = [p for p in parts if p]
-    return sep.join(kept) if kept else None
 
 
 def league_label(league: int | None, tier: int | None = None, *, short: bool = False) -> str | None:
@@ -55,14 +50,6 @@ def mmr(value: int | None) -> str | None:
     return f"{value:,} MMR" if value else None
 
 
-def duration(seconds: int | None) -> str | None:
-    """``680`` -> ``11:20``."""
-    if not seconds or seconds <= 0:
-        return None
-    m, s = divmod(int(seconds), 60)
-    return f"{m}:{s:02d}"
-
-
 def record_text(r: Record | None) -> str | None:
     """``9-1``; None for a window with no games (never ``0-0``)."""
     if r is None or r.games <= 0:
@@ -88,20 +75,50 @@ def h2h_record(wins: int, losses: int, ties: int = 0) -> str | None:
     return f"{wins}-{losses}" + (f"-{ties}" if ties else "")
 
 
-def vs_race(recent: Sequence[RecentResult], race: str | None, *, min_games: int = 3) -> str | None:
-    """Winrate against ``race`` in recent games: ``vs Z 64%``."""
-    if not race or race not in RACE_INITIAL or race == "RANDOM":
-        return None
-    games = [r for r in recent if r.opponent_race == race]
-    if len(games) < min_games:
-        return None
-    wins = sum(1 for r in games if r.won)
-    return f"vs {RACE_INITIAL[race]} {wins / len(games):.0%}"
+RACE_ORDER = ("ZERG", "TERRAN", "PROTOSS", "RANDOM")
+MIN_VS_GAMES = 5  # card: games against your race before the winrate is shown
+SHORT_WIN_CHEESE = 0.5
 
 
-def form(recent: Sequence[RecentResult], n: int = 5) -> list[bool]:
-    """Newest-first wins/losses for the form strip."""
-    return [r.won for r in recent[:n]]
+def vs_race(t: Tendencies, race: str | None, *, min_games: int = MIN_VS_GAMES) -> str | None:
+    """Their winrate against ``race``: ``vs Z 78% (14)``; None below ``min_games``."""
+    if race not in ("ZERG", "TERRAN", "PROTOSS"):
+        return None
+    rec = t.vs_race.get(race)
+    if rec is None or rec.games < min_games or rec.winrate is None:
+        return None
+    return f"vs {RACE_INITIAL[race]} {rec.winrate:.0%} ({rec.games})"
+
+
+def short_wins(t: Tendencies) -> str | None:
+    """``62% wins < 6min`` when at least half of their wins are short (cheese signal)."""
+    if t.short_win_rate is None or t.short_win_rate < SHORT_WIN_CHEESE:
+        return None
+    return f"{t.short_win_rate:.0%} wins < 6min"
+
+
+def vs_races_line(t: Tendencies) -> str | None:
+    """``vZ 9-3 · vT 4-4 · vP 6-1`` (races with games only)."""
+    parts = []
+    for race in RACE_ORDER:
+        rec = t.vs_race.get(race)
+        if rec is not None and rec.games:
+            parts.append(f"v{RACE_INITIAL[race]} {rec}")
+    return join(parts)
+
+
+def hour_range(window: tuple[int, int] | None) -> str | None:
+    """``(20, 23)`` -> ``20:00–23:00``."""
+    if window is None:
+        return None
+    return f"{window[0]:02d}:00–{window[1]:02d}:00"
+
+
+def off_race(t: Tendencies) -> str | None:
+    """``Off-race: 4 of last 25``; None when they always play their main race."""
+    if t.race_switches <= 0:
+        return None
+    return f"Off-race: {t.race_switches} of last {t.games}"
 
 
 def top_maps(maps: Mapping[str, Record], n: int = 3) -> str | None:

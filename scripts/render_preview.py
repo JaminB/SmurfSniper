@@ -30,7 +30,6 @@ from PySide6.QtWidgets import QApplication, QWidget  # noqa: E402
 
 from smurfsniper.models.config import Config  # noqa: E402
 from smurfsniper.ui import preview_data as pd  # noqa: E402
-from smurfsniper.ui import tokens as t  # noqa: E402
 from smurfsniper.ui.overlay import (  # noqa: E402
     HotkeyHint,
     OpponentCard,
@@ -41,8 +40,8 @@ from smurfsniper.ui.overlay import (  # noqa: E402
     anchor_point,
     set_animations_enabled,
 )
-from smurfsniper.ui.overlay.card import dotted  # noqa: E402
-from smurfsniper.ui.overlay.widgets import Part, Section, key_row  # noqa: E402
+from smurfsniper.ui.panels import rivals as rivals_panel  # noqa: E402
+from smurfsniper.ui.panels import session as session_panel  # noqa: E402
 from smurfsniper.ui.panels.intel import build_intel_body  # noqa: E402
 from smurfsniper.ui.tokens import TokenContext  # noqa: E402
 
@@ -110,7 +109,7 @@ def toasts(tk: TokenContext) -> ToastStack:
     s.push(
         ToastSpec("xXbarcodeXx: likely smurf", "new account (9d)", "danger", chip="Ctrl+Shift+1")
     )
-    s.push(ToastSpec("Victory · +24 MMR (4,234)", "Session 5-2 · You 2-0 vs Bob", "win"))
+    s.push(ToastSpec("Victory vs Bob (Zerg)", "+24 MMR (4,234) · 14:32 · Session 7-3", "win"))
     return s
 
 
@@ -120,31 +119,36 @@ def intel(tk: TokenContext) -> Panel:
     return panel
 
 
-def stub_panel(tk: TokenContext, title: str, chip: str, rows) -> Panel:
-    panel = Panel(title, chip, tk, Config().overlays.panels.placement)
-    sec = Section(tk)
-    for key, parts in rows:
-        sec.add(key_row(tk, key, dotted([Part(x, "caption", t.TEXT_SECONDARY) for x in parts])))
-    panel.set_body([sec])
+def session(tk: TokenContext) -> Panel:
+    panel = Panel("Session", "Ctrl+Shift+3", tk, Config().overlays.panels.placement)
+    panel.set_body(session_panel.build(pd.session_snapshot(), tk))
     return panel
 
 
-def session(tk: TokenContext) -> Panel:
-    return stub_panel(
-        tk,
-        "Session",
-        "Ctrl+Shift+3",
-        [("GAMES", ["5-2", "+48 MMR"]), ("STREAK", ["W3"]), ("TIME", ["1h 12m"])],
-    )
+def session_empty(tk: TokenContext) -> Panel:
+    panel = Panel("Session", "Ctrl+Shift+3", tk, Config().overlays.panels.placement)
+    panel.set_body(session_panel.build(pd.session_snapshot(0), tk))
+    return panel
 
 
 def rivals(tk: TokenContext) -> Panel:
-    return stub_panel(
-        tk,
-        "Rivals",
-        "Ctrl+Shift+4",
-        [("NEMESIS", ["Bob", "1-5"]), ("VICTIM", ["Alice", "6-1"]), ("MOST", ["Carol", "9 games"])],
+    panel = Panel("Rivals", "Ctrl+Shift+4", tk, Config().overlays.panels.placement)
+    panel.set_body(rivals_panel.build(pd.rivals_summary(), tk, now=pd.NOW) or [])
+    return panel
+
+
+def recap(tk: TokenContext) -> ToastStack:
+    """The post-game recap, as built by core.recap after the rating update."""
+    s = ToastStack(tk, Config().overlays.toasts.placement, seconds=60)
+    s.push(
+        ToastSpec(
+            "Victory vs Bob (Zerg)",
+            "+24 MMR (4,234) · 14:32 · Session 7-3 · You 3-6 vs Bob",
+            "win",
+            id="recap-1",
+        )
     )
+    return s
 
 
 def hint(tk: TokenContext) -> HotkeyHint:
@@ -169,7 +173,9 @@ COMPONENTS: dict[str, Callable[[TokenContext], QWidget]] = {
     "card_4v4": lambda tk: card(tk, pd.quad_profiles()),
     "toasts": toasts,
     "intel": intel,
+    "recap": recap,
     "session": session,
+    "session_empty": session_empty,
     "rivals": rivals,
     "hint": hint,
 }

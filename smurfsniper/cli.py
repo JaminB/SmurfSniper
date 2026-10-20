@@ -226,11 +226,12 @@ def self_test(output: Path) -> None:
 
 
 def _self_test_hud() -> None:
-    """Build and render a full opponent card and the intel panel (animations off)."""
+    """Build and render a full opponent card and the intel, session and rivals panels."""
     from PySide6.QtGui import QImage
 
     from smurfsniper.ui import preview_data as pd
     from smurfsniper.ui.overlay import OpponentCard, Panel, set_animations_enabled
+    from smurfsniper.ui.panels import rivals, session
     from smurfsniper.ui.panels.intel import build_intel_body
     from smurfsniper.ui.tokens import TokenContext
 
@@ -244,7 +245,15 @@ def _self_test_hud() -> None:
             card.apply(u)
         panel = Panel("Scouting intel", "Ctrl+Shift+2", tk, ov.panels.placement)
         panel.set_body(build_intel_body([pd.intel_profile()], tk) or [])
-        for w in (card, panel):
+        extra = []
+        for title, key, body in (
+            ("Session", "Ctrl+Shift+3", session.build(pd.session_snapshot(), tk)),
+            ("Rivals", "Ctrl+Shift+4", rivals.build(pd.rivals_summary(), tk, now=pd.NOW)),
+        ):
+            p = Panel(title, key, tk, ov.panels.placement)
+            p.set_body(body or [])
+            extra.append(p)
+        for w in (card, panel, *extra):
             w.reveal()
             img = QImage(w.size(), QImage.Format.Format_ARGB32_Premultiplied)
             img.fill(0)
