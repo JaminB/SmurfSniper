@@ -67,12 +67,11 @@ def test_tray_status_follows_game_state(app, qtbot):
     assert "In menus" in app.tray.icon.toolTip()
 
 
-def test_hotkeys_route_to_service(app, monkeypatch):
+def test_hotkeys_route_to_service_and_hud(app, monkeypatch):
     calls: list[str] = []
-    svc = app.service
-    monkeypatch.setattr(svc, "request_redetect", lambda: calls.append("redetect"))
-    monkeypatch.setattr(svc, "toggle_opponent_card", lambda: calls.append("card"))
-    monkeypatch.setattr(svc, "toggle_intel", lambda: calls.append("intel"))
+    monkeypatch.setattr(app.service, "request_redetect", lambda: calls.append("redetect"))
+    monkeypatch.setattr(app.hud, "toggle_card", lambda: calls.append("card"))
+    monkeypatch.setattr(app.hud, "toggle_intel", lambda: calls.append("intel"))
     for action in (
         HotkeyAction.REDETECT,
         HotkeyAction.OPPONENT_CARD,
@@ -86,14 +85,14 @@ def test_hotkeys_route_to_service(app, monkeypatch):
 
 def test_hide_all_hotkey_toggles_and_mirrors_in_tray(app):
     app._on_hotkey("hide_all")
-    assert app.service.hud_hidden and app.tray.hide_action.isChecked()
+    assert app.hud.hud_hidden and app.tray.hide_action.isChecked()
     app._on_hotkey("hide_all")
-    assert not app.service.hud_hidden and not app.tray.hide_action.isChecked()
+    assert not app.hud.hud_hidden and not app.tray.hide_action.isChecked()
 
 
 def test_tray_hide_and_pause_and_sounds(app):
     app.tray.hide_action.setChecked(True)
-    assert app.service.hud_hidden
+    assert app.hud.hud_hidden
     app.tray.pause_action.setChecked(True)
     assert app.service.paused and app.tray.status_text == "Paused"
     app.tray.pause_action.setChecked(False)
