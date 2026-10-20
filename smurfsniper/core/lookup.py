@@ -34,7 +34,7 @@ from smurfsniper.analyze.rivals import rivals as compute_rivals
 from smurfsniper.analyze.smurf import SmurfInputs, assess
 from smurfsniper.analyze.team import team_summary, windowed_records
 from smurfsniper.api.errors import ApiError
-from smurfsniper.api.sc2pulse.ids import LinkType, Queue, TeamType, solo_legacy_uid
+from smurfsniper.api.sc2pulse.ids import RACE_IDS, LinkType, Queue, TeamType, solo_legacy_uid
 from smurfsniper.api.sc2pulse.models import LadderTeam, ProPlayerEntry, SocialLink
 from smurfsniper.core import matching
 from smurfsniper.core.profile import (
@@ -73,6 +73,14 @@ def pick_team(teams: list[LadderTeam], race: str | None) -> LadderTeam | None:
             teams = raced
     epoch = datetime.min.replace(tzinfo=UTC)
     return max(teams, key=lambda t: (t.last_played or epoch, t.rating or 0))
+
+
+_RACE_BY_ID = {str(v): k for k, v in RACE_IDS.items()}
+
+
+def _race_of_uid(uid: str) -> str | None:
+    """Race of a solo legacy UID or legacy id (``201-0-2-1.315071.3`` / ``1.315071.3``)."""
+    return _RACE_BY_ID.get(uid.rsplit(".", 1)[-1]) if uid else None
 
 
 class LookupPipeline(QObject):
@@ -383,12 +391,11 @@ class LookupPipeline(QObject):
         peak_league = max(
             (s.league_type_max for s in summaries if s.league_type_max is not None), default=None
         )
-        race_by_uid = dict(zip(uids, races, strict=False))
-        race_peaks = {
-            race_by_uid[s.legacy_uid]: s.rating_max
-            for s in summaries
-            if s.legacy_uid in race_by_uid and s.rating_max
-        }
+        race_peaks: dict[str, int] = {}
+        for s in summaries:
+            race = _race_of_uid(s.legacy_uid)
+            if race and s.rating_max:
+                race_peaks[race] = max(race_peaks.get(race, 0), s.rating_max)
         cand = identity.candidate
         current = cand.rating or (points[-1].rating if points else None)
         assessment = assess(

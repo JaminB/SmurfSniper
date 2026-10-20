@@ -303,3 +303,18 @@ def test_h2h_is_tagged_rival_or_nemesis(qtbot, pulse, store_pipeline):
     log("defeat", 5)
     info = pipe._h2h(ctx(), 0, ident)
     assert (info.wins, info.losses, info.rivalry) == (2, 5, "nemesis")
+
+
+@pytest.mark.parametrize(
+    ("uid", "race"),
+    [
+        ("201-0-2-1.315071.3", "ZERG"),
+        ("1.315071.2", "PROTOSS"),  # static=LEGACY_ID form
+        ("201-0-2-1.315071.*", None),
+        ("", None),
+    ],
+)
+def test_race_of_uid_reads_the_race_segment(uid, race):
+    from smurfsniper.core.lookup import _race_of_uid
+
+    assert _race_of_uid(uid) == race
