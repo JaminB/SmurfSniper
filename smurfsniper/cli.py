@@ -1,254 +1,155 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import contextlib
 from pathlib import Path
 from typing import Any
 
 import click
 import yaml
 
-from smurfsniper import service
 from smurfsniper._version import __version__ as VERSION
-from smurfsniper.config_paths import resolve_config
-from smurfsniper.models.config import Config, Preferences
+from smurfsniper.models.config import (
+    Config,
+    ConfigError,
+    apply_overrides,
+    load_config,
+    masked_dump,
+)
 
-DEFAULT_URL = "http://localhost:6119"
-
-
-def load_config(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        raise click.ClickException(f"Config file not found: {path}")
-
-    if path.is_dir():
-        raise click.ClickException(f"Config path is a directory: {path}")
-
-    with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
-
-
-def apply_overrides(config: dict[str, Any], overrides: list[str]) -> None:
-    """
-    Apply overrides of the form key.subkey=value
-    NOTE: These apply BEFORE pydantic validation.
-    """
-    for item in overrides:
-        if "=" not in item:
-            raise click.ClickException(f"Invalid override '{item}'. Expected key=value")
-
-        key, value = item.split("=", 1)
-        parts = key.split(".")
-
-        cursor: dict[str, Any] = config
-        for part in parts[:-1]:
-            cursor = cursor.setdefault(part, {})
-
-        v: Any = value
-        if value.lower() in {"true", "false"}:
-            v = value.lower() == "true"
-        else:
-            with contextlib.suppress(ValueError):
-                v = int(value)
-
-        cursor[parts[-1]] = v
+CONFIG_OPTION = click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=False, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to config file (default: the user config directory)",
+)
+SET_OPTION = click.option(
+    "--set",
+    "overrides",
+    multiple=True,
+    metavar="KEY=VALUE",
+    help="Override a config value in memory, e.g. overlays.opacity=0.8 (repeatable)",
+)
 
 
-def load_and_validate_config(
-    path: Path,
-    overrides: list[str],
-) -> Config:
-    raw = load_config(path)
-    apply_overrides(raw, overrides)
-
-    if "preferences" in raw:
-        raw["preferences"] = Preferences.from_yaml(raw["preferences"])
-
+def load_and_override(
+    config_path: Path | None, overrides: tuple[str, ...], *, write_migration: bool = True
+) -> tuple[Config, Path]:
     try:
-        return Config.model_validate(raw)
-    except Exception as e:
-        raise click.ClickException(f"Config validation failed: {e}") from e
+        config, path = load_config(config_path, write_migration=write_migration)
+        return apply_overrides(config, overrides), path
+    except ConfigError as e:
+        raise click.ClickException(str(e)) from e
 
 
-def masked_dump(config: Config) -> dict[str, Any]:
-    """``model_dump`` with secrets masked (``****abcd``)."""
-    data = config.model_dump()
-    aligulac = ((data.get("integrations") or {}).get("aligulac")) or {}
-    key = aligulac.get("api_key")
-    if key:
-        aligulac["api_key"] = "****" + key[-4:]
-    return data
-
-
-def run_service(
-    *,
-    url: str,
-    config_path: Path,
-    config: Config,
-    app=None,
-) -> None:
-    from smurfsniper.logger import logger
-
-    logger.info(f"Config: {config_path}")
-    logger.debug(yaml.dump(masked_dump(config), sort_keys=False))
-    logger.info(f"Using SC2 client API: {url} (ctrl+c to exit)")
-
-    raise SystemExit(service.main(url=url, config=config, app=app))
+def dump_text(config: Config) -> str:
+    return yaml.dump(masked_dump(config), sort_keys=False, allow_unicode=True)
 
 
 @click.group(
     context_settings={"help_option_names": ["-h", "--help"]},
     invoke_without_command=True,
 )
-@click.version_option(VERSION)
+@click.version_option(VERSION, "-V", "--version")
 @click.pass_context
 def cli(ctx: click.Context) -> None:
-    """SmurfSniper service runner."""
-    # No subcommand (e.g. double-clicking the EXE) -> launch the config GUI + run.
+    """SmurfSniper: smurf-spotting overlay for StarCraft II."""
+    # No subcommand (e.g. double-clicking the exe) runs the tray app.
     if ctx.invoked_subcommand is None:
         ctx.invoke(run)
 
 
 @cli.command()
-@click.option(
-    "--config",
-    "config_path",
-    type=click.Path(
-        exists=False,
-        dir_okay=False,
-        path_type=Path,
-    ),
-    default=None,
-    help="Path to config file (default: search cwd, then user config dir)",
-)
-@click.option(
-    "--url",
-    default=DEFAULT_URL,
-    show_default=True,
-    help="SC2 client API base URL (a trailing /game is accepted)",
-)
-@click.option(
-    "--headless",
-    is_flag=True,
-    help="Skip the config editor GUI and load the resolved config directly",
-)
-@click.option(
-    "--dry-run",
-    is_flag=True,
-    help="Validate config and exit",
-)
-@click.option(
-    "--set",
-    "overrides",
-    multiple=True,
-    metavar="KEY=VALUE",
-    help="Override config values (can be repeated)",
-)
+@CONFIG_OPTION
+@click.option("--url", default=None, help="SC2 client API base URL (a trailing /game is accepted)")
+@click.option("--no-tray", is_flag=True, help="Run without a tray icon; quit with Ctrl+C")
+@click.option("--dry-run", is_flag=True, help="Validate the config, print it and exit")
+@SET_OPTION
 def run(
     config_path: Path | None,
-    url: str,
-    headless: bool,
+    url: str | None,
+    no_tray: bool,
     dry_run: bool,
     overrides: tuple[str, ...],
 ) -> None:
-    """
-    Run the SmurfSniper service.
-    """
+    """Run SmurfSniper (tray app by default)."""
     from smurfsniper import paths
-    from smurfsniper.logger import setup_logging
+    from smurfsniper.logger import logger, setup_logging
+
+    extra = (f"advanced.sc2_client_url={url.rstrip('/').removesuffix('/game')}",) if url else ()
+    config, path = load_and_override(config_path, (*overrides, *extra), write_migration=not dry_run)
+    if dry_run:
+        click.echo(dump_text(config))
+        click.secho("Config is valid", fg="green")
+        return
 
     paths.ensure_dirs()
-    setup_logging("INFO", console=True)
-    load_path, write_path = resolve_config(config_path)
+    setup_logging(config.advanced.log_level, console=True)
+    logger.info(f"SmurfSniper {VERSION}; config: {path}")
+    logger.debug(dump_text(config))
 
-    if headless:
-        if load_path is None:
-            if config_path is not None:
-                raise click.ClickException(
-                    f"Config file not found: {config_path}; cannot run headless."
-                )
-            raise click.ClickException("No config file found; cannot run headless.")
-        config = load_and_validate_config(load_path, list(overrides))
-        if dry_run:
-            click.secho("Config is valid", fg="green")
-            return
-        run_service(url=url, config_path=load_path, config=config)
-        return
+    from smurfsniper.app.application import SmurfSniperApp
 
-    # GUI path — create the single QApplication here and reuse it for the loop.
-    from PySide6.QtWidgets import QApplication
-
-    from smurfsniper.ui.config_editor import edit_config
-
-    app = QApplication.instance() or QApplication([])
-
-    if load_path is not None:
-        prefill = load_and_validate_config(load_path, list(overrides))
-    else:
-        prefill = Config.defaults()
-
-    edited = edit_config(prefill)
-    if edited is None:
-        click.echo("Cancelled.")
-        return
-
-    edited.write_config_file(write_path)
-    click.secho(f"Config saved to {write_path}", fg="green")
-
-    if dry_run:
-        click.secho("Config is valid and saved", fg="green")
-        return
-
-    run_service(url=url, config_path=write_path, config=edited, app=app)
+    app = SmurfSniperApp(config, path, tray=not no_tray)
+    raise SystemExit(app.run())
 
 
 @cli.command()
-@click.option(
-    "--config",
-    "config_path",
-    type=click.Path(
-        exists=False,
-        dir_okay=False,
-        path_type=Path,
-    ),
-    default=None,
-    help="Path to config file (default: search cwd, then user config dir)",
-)
-@click.option(
-    "--set",
-    "overrides",
-    multiple=True,
-    metavar="KEY=VALUE",
-    help="Override config values (can be repeated)",
-)
-@click.option(
-    "--show",
-    is_flag=True,
-    help="Print the validated config",
-)
-def validate(
-    config_path: Path | None,
-    overrides: tuple[str, ...],
-    show: bool,
-) -> None:
-    """
-    Validate the SmurfSniper configuration.
-    """
-    load_path, _ = resolve_config(config_path)
-    if load_path is None:
-        if config_path is not None:
-            raise click.ClickException(f"Config file not found: {config_path}")
-        raise click.ClickException("No config file found.")
-
-    config = load_and_validate_config(
-        load_path,
-        list(overrides),
-    )
-
+@CONFIG_OPTION
+@SET_OPTION
+@click.option("--show", is_flag=True, help="Print the validated config (secrets masked)")
+def validate(config_path: Path | None, overrides: tuple[str, ...], show: bool) -> None:
+    """Validate the SmurfSniper configuration."""
+    config, _ = load_and_override(config_path, overrides, write_migration=False)
     click.secho("Config is valid", fg="green")
-
     if show:
         click.echo()
-        click.echo(yaml.dump(masked_dump(config), sort_keys=False))
+        click.echo(dump_text(config))
+
+
+@cli.group()
+def cache() -> None:
+    """Inspect or clear the on-disk API response cache."""
+
+
+def _open_disk_cache():
+    from smurfsniper import paths
+    from smurfsniper.api.cache import DiskCache
+
+    path = paths.http_cache_path()
+    if not path.exists():
+        return None
+    return DiskCache(path)
+
+
+@cache.command("stats")
+def cache_stats() -> None:
+    """Show how many responses are cached."""
+    disk = _open_disk_cache()
+    if disk is None:
+        click.echo("Cache: 0 entries · 0 KB")
+        return
+    try:
+        entries, size = disk.stats()
+    finally:
+        disk.close()
+    from smurfsniper.ui.settings.tab_advanced import format_bytes
+
+    click.echo(f"Cache: {entries:,} entries · {format_bytes(size)}")
+
+
+@cache.command("clear")
+def cache_clear() -> None:
+    """Delete every cached response."""
+    disk = _open_disk_cache()
+    if disk is None:
+        click.echo("Cache is already empty.")
+        return
+    try:
+        disk.clear()
+    finally:
+        disk.close()
+    click.secho("Cache cleared", fg="green")
 
 
 def _discover_modules() -> list[str]:
@@ -280,7 +181,7 @@ def _discover_modules() -> list[str]:
     help="Where to write the JSON result",
 )
 def self_test(output: Path) -> None:
-    """Import every module and build a Qt widget; used by CI to smoke-test the exe."""
+    """Import every module, load assets and build Qt widgets; CI smoke-tests the exe."""
     import importlib
     import json
     import os
@@ -289,14 +190,24 @@ def self_test(output: Path) -> None:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     try:
         import PySide6
-        from PySide6.QtWidgets import QApplication, QLabel
+        from PySide6.QtGui import QIcon
+        from PySide6.QtWidgets import QApplication
 
         names = _discover_modules()
         for name in names:
             importlib.import_module(name)
         app = QApplication.instance() or QApplication([])
-        label = QLabel("self-test")
-        label.deleteLater()
+        from smurfsniper.assets import asset_path
+
+        for asset in ("logo.ico", "logo.png", "tray.png"):
+            if not asset_path(asset).is_file():
+                raise FileNotFoundError(f"missing asset {asset}")
+        if QIcon(str(asset_path("tray.png"))).isNull():
+            raise RuntimeError("tray.png did not load")
+        from smurfsniper.ui.settings import SettingsWindow
+
+        window = SettingsWindow(Config())
+        window.deleteLater()
         del app
         result: dict[str, Any] = {
             "version": VERSION,

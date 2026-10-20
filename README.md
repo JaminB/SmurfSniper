@@ -50,7 +50,7 @@ time you queue into them you see your head-to-head history at a glance.
 - Looks up each opponent's ladder profile, current-season team, league and tier, regional
   rank, peak MMR, full rating history and recent matches.
 - Candidates must match the in-game name exactly; they are ranked by your **±500 MMR window**
-  (`me.mmr`, widened to ±1000 if nobody fits), the race seen in game and recent activity.
+  (your MMR, kept up to date automatically; widened to ±1000 if nobody fits), the race seen in game and recent activity.
 - Lookups run in stages and the overlay appears as soon as identity, rating and history are in.
 - Responses are cached in memory and on disk (SQLite) with per-endpoint lifetimes, so a
   rematch or a hotkey never re-downloads what was already fetched. A cold 1v1 lookup costs at
@@ -82,7 +82,7 @@ time you queue into them you see your head-to-head history at a glance.
 - Each row stores the game mode, both races, game length and your own result, and a game is
   never logged twice. Older databases are migrated automatically.
 
-### Scouting intel (Ctrl+F2)
+### Scouting intel (Ctrl+Shift+2)
 On demand, show a deeper scouting profile on the current opponent(s), using official public
 APIs only:
 - **Recent form** (last 10 results), **top maps** with W-L records and **average game length**
@@ -92,30 +92,54 @@ APIs only:
 - **Aligulac** rating and rank (needs a free API key) and the **Liquipedia** intro, looked up
   only for revealed pros or names distinctive enough to be worth it.
 
-### Configurable overlays
-- Frameless, transparent, **always-on-top** widgets that **auto-close** after a set duration.
-- Independent settings per overlay type: `1v1`, `2v2`, `team`, two **player-log** overlays, and
-  the **external** (Ctrl+F2) overlay.
-- Per overlay: `visible`, `orientation` (horizontal / vertical), `position` (8-point screen
-  anchor), `seconds_delay_before_show`, and `seconds_visible`.
-- Lines with no data are left out instead of showing placeholders.
+### Tray app and Settings
+- SmurfSniper lives in the **system tray**: no console window, logs go to a file. Left-click
+  the icon for the hotkey cheat-sheet; right-click for the menu (Hotkeys, Settings, Change
+  account, Pause lookups, Hide HUD, Sounds, open the logs or data folder, Quit).
+- A modern **Settings window** (dark, instant apply, no Save button) with five tabs: Account,
+  Overlays, Hotkeys, Integrations and Advanced. No YAML editing is needed.
+- **Auto-detected account**: SmurfSniper learns your in-game name from the games you play,
+  finds your SC2Pulse character and **refreshes your MMR after every game** (it polls SC2Pulse
+  20 s, 90 s and 5 min after the game until the rating moves). On first run a small picker lets
+  you choose your account; "Detect automatically" skips it.
+- Only one instance runs at a time; a second launch exits with a notice.
 
-### Config editor GUI
-- Double-clicking the executable (or running with no subcommand) launches a **config editor
-  dialog** that exposes every option, validates it, saves it, and starts the service.
-- `--headless` skips the GUI and loads the resolved config directly.
+### Configurable overlays
+- Frameless, transparent, **always-on-top** and **click-through** widgets that never take
+  the mouse.
+- Opacity (40-100%) and size (75-150%) sliders, a screen selector, and per-surface placement:
+  a 3x3 anchor grid plus X/Y offsets for the opponent card, toasts, panels and hotkey hint.
+  *Preview on screen* shows samples at the configured spots.
+- Lines with no data are left out instead of showing placeholders.
+- Overlays appear above SC2 in **Windowed (Fullscreen)** or windowed mode, **not** in
+  exclusive fullscreen.
 
 ### Hotkeys
-- **Ctrl+F1** — reset the game-state detector (forces new-game detection on the next poll).
-- **Ctrl+F2** — show scouting intel (form, maps, pro details, Aligulac, Liquipedia) on the
-  current opponent(s); reuses what was already fetched.
+Global hotkeys, all rebindable in **Settings > Hotkeys** (no restart) and listed in the tray
+cheat-sheet. Overlays are click-through, so press a panel's hotkey again (or the hide-all key)
+to dismiss it.
+
+| Default | Action |
+|---|---|
+| **Ctrl+Shift+1** | Opponent card (toggle; re-shows from cached data, no new requests) |
+| **Ctrl+Shift+2** | Scouting intel: form, maps, pro details, Aligulac, Liquipedia (toggle) |
+| **Ctrl+Shift+3** | Session tracker (coming in a later release) |
+| **Ctrl+Shift+4** | Rivals (coming in a later release) |
+| **Ctrl+Shift+R** | Re-detect the current game |
+| **Ctrl+Shift+`** | Hide / show everything (resets on the next game) |
+
+SC2 still receives these keys. Avoid combos bound in your SC2 hotkey profile; Settings warns
+about the usual SC2 ones. On Windows with several input languages, Ctrl+Shift alone switches
+the keyboard layout; that is harmless with a third key. If SC2 runs **as administrator**, run
+SmurfSniper as administrator too, or the hooks will not see the keys. On non-US layouts the
+backtick key may not be available; rebind it in Settings.
 
 ### Other
 - **Audio chimes** (Windows `winsound`) signal new games and notable findings.
-- Config discovery searches the **current directory** first, then the platformdirs **user
-  config dir**; new configs are written to the user config dir.
-- Colored console logging plus a rotating `app.log` (10 MB, 14-day retention) in the user log
-  directory (`%LOCALAPPDATA%\smurfsniper\smurfsniper\Logs` on Windows).
+- Settings are stored in `config.yaml` in the platformdirs **user config dir** (or `--config`).
+  Old (v1) config files are migrated automatically and backed up as `config.v1.bak.yaml`.
+- A rotating `app.log` (10 MB, 14-day retention) in the user log directory
+  (`%LOCALAPPDATA%\smurfsniper\smurfsniper\Logs` on Windows); the CLI also logs to the console.
 - Optional **Aligulac API key** integration for richer pro-player data. The key is never logged
   or printed in full.
 - Distributed as a self-contained **Windows `.exe`** (no Python required) via the release build.
@@ -155,101 +179,67 @@ pip install .
 
 ## Configuration
 
-SmurfSniper is configured via a YAML file. It is searched for in the current directory first,
-then the user config directory. You can also point at one explicitly with `--config`.
-
-### Example `config.yaml`
+Open **Settings** from the tray icon. Everything below can be changed there and applies
+instantly. The settings are stored as YAML (version 2) in your user config directory; you can
+also point at a file with `--config`.
 
 ```yaml
-me:
-  name: YourBattleTag
-  mmr: 4200
-
-team:
-  name: Ladder Gremlins
-  mmr: 4100
-  members:
-    - TeammateOne
-    - TeammateTwo
-
-preferences:
-  1v1_overlay:
-    visible: true
-    orientation: horizontal
-    position: top_center
-    seconds_delay_before_show: 0.0
-    seconds_visible: 30
-
-  2v2_overlay:
-    visible: true
-    orientation: horizontal
-    position: top_center
-    seconds_delay_before_show: 2.0
-    seconds_visible: 40
-
-  team_overlay:
-    visible: true
-    orientation: vertical
-    position: top_right
-    seconds_delay_before_show: 3.0
-    seconds_visible: 45
-
-  overlay_player_log_1:
-    visible: true
-    orientation: vertical
-    position: bottom_left
-    seconds_delay_before_show: 0.0
-    seconds_visible: 60
-
-  overlay_player_log_2:
-    visible: false
-
-  external_overlay:
-    visible: true
-    position: top_center
-    seconds_visible: 45
-
-# Optional — richer pro-player data on Ctrl+F2
+version: 2
+account:
+  name: YourName            # in-game name, learned automatically
+  region: EU
+  auto_detect: true
+  mmr_by_queue: {201: 4200} # refreshed after each game
+  teammates: [TeammateOne]
+overlays:
+  opacity: 0.7
+  scale: 1.0
+  card:
+    placement: {anchor: top_center, offset_y: 72}
+    auto_hide_seconds: 45
+hotkeys:
+  opponent_card: ctrl+shift+1
+  hide_all: ctrl+shift+`
 integrations:
-  aligulac:
-    api_key: ""
+  aligulac_api_key: ""      # optional, free: https://aligulac.com/about/api/
+  liquipedia_enabled: true
+advanced:
+  mmr_window: 500
 ```
 
-`position` accepts: `top_left`, `top_right`, `bottom_left`, `bottom_right`, `top_center`,
-`bottom_center`, `center`.
+Anchors: `top_left`, `top_center`, `top_right`, `center_left`, `center`, `center_right`,
+`bottom_left`, `bottom_center`, `bottom_right`.
 
 ---
 
 ## Usage
 
-Launch the config editor GUI and run (double-click the `.exe`, or):
+Double-click the `.exe` (or run `smurfsniper`) to start the tray app. From a terminal:
 
 ```bash
-smurfsniper run
-```
-
-Run with an explicit config, skipping the GUI:
-
-```bash
-smurfsniper run --headless --config config.yaml
-```
-
-Validate a config without starting the service:
-
-```bash
+smurfsniper                                   # tray app
+smurfsniper run --no-tray                     # no tray icon; Ctrl+C quits
+smurfsniper run --dry-run                     # validate the config, print it, exit
 smurfsniper validate --config config.yaml --show
+smurfsniper cache stats                       # size of the on-disk API cache
+smurfsniper cache clear
 ```
+
+Printing from the windowed `.exe` attaches to the terminal that launched it, so output may
+appear after the prompt returns.
 
 ### Common options
 
 | Option | Description |
 |---|---|
-| `--config PATH` | Path to the config file (defaults to cwd, then user config dir). |
+| `--config PATH` | Path to the config file (default: the user config dir). |
 | `--url URL` | SC2 client API base URL (default `http://localhost:6119`; a trailing `/game` is accepted). |
-| `--headless` | Skip the config editor GUI; load the resolved config directly. |
-| `--dry-run` | Validate the config and exit without starting the poll loop. |
-| `--set KEY=VALUE` | Override a config value inline (repeatable), e.g. `--set me.mmr=4200`. |
-| `--version` | Print the version and exit. |
+| `--no-tray` | Run without a tray icon. |
+| `--dry-run` | Validate the config, print it (API key masked) and exit. |
+| `--set KEY=VALUE` | Override a config value in memory (repeatable), e.g. `--set overlays.opacity=0.8`. |
+| `--version`, `-V` | Print the version and exit. |
+
+Windows may show a SmartScreen warning for the unsigned `.exe`; choose *More info > Run anyway*.
 
 ---
 
@@ -268,7 +258,7 @@ loading, in-game and result screens:
 
 ```bash
 python scripts/fake_sc2.py --port 6119 --script 1v1   # also: 2v2, replay, ai
-smurfsniper run --headless
+smurfsniper run --no-tray
 ```
 
 ## Data sources

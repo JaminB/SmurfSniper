@@ -1,8 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec: one-file, console Windows build of smurfsniper.
+"""PyInstaller spec: one-file, windowed (no console) Windows build of smurfsniper.
 
 Build:  pyinstaller --clean --noconfirm smurfsniper.spec
 Output: dist/smurfsniper.exe (self-contained; no Python required on the target).
+
+The exe is a tray app (``console=False``): logs go to a file and
+``packaging/pyi_entry.py`` re-attaches the parent terminal for CLI use.
 
 PySide6 is handled by PyInstaller's bundled Qt hooks. keyboard/peewee are listed
 as hidden imports defensively.
@@ -23,6 +26,13 @@ import re
 with open(os.path.join(SPECPATH, "smurfsniper", "_version.py"), encoding="utf-8") as _f:
     VERSION = re.search(r'__version__\s*=\s*"([^"]+)"', _f.read()).group(1)
 print(f"smurfsniper.spec: building version {VERSION}")
+
+# Windows version resource generated from the same version string.
+import runpy  # noqa: E402
+
+VERSION_FILE = runpy.run_path(os.path.join(SPECPATH, "scripts", "make_version_file.py"))["write"](
+    VERSION, os.path.join(SPECPATH, "build", "version_info.txt")
+)
 
 # Unused Qt python submodules — keep PyInstaller from analyzing/collecting them.
 _QT_EXCLUDES = [
@@ -119,7 +129,7 @@ a = Analysis(
     ["packaging/pyi_entry.py"],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[("smurfsniper/assets", "smurfsniper/assets")],
     hiddenimports=["keyboard", "peewee", "smurfsniper._modules"],
     hookspath=[],
     hooksconfig={},
@@ -145,7 +155,8 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=True,
+    console=False,
+    version=VERSION_FILE,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

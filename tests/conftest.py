@@ -16,6 +16,31 @@ import respx
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _qt_teardown():
+    """Destroy leftover widgets while the QApplication is still alive.
+
+    Without this, top-level widgets created by tests are torn down during interpreter
+    finalization after the QApplication is gone, which intermittently segfaults the
+    process on exit (all tests pass, exit code is non-zero).
+    """
+    yield
+    import gc
+
+    from PySide6.QtCore import QCoreApplication, QEvent
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    if app is None:
+        return
+    for w in QApplication.topLevelWidgets():
+        w.close()
+        w.deleteLater()
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    app.processEvents()
+    gc.collect()
+
+
 @pytest.fixture
 def fixture_json() -> Callable[[str], Any]:
     """Load ``tests/fixtures/<name>.json`` (UTF-8)."""
@@ -41,6 +66,7 @@ def tmp_dirs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Path]
     monkeypatch.setattr(paths, "data_dir", lambda: dirs["data"])
     monkeypatch.setattr(paths, "cache_dir", lambda: dirs["cache"])
     monkeypatch.setattr(paths, "log_dir", lambda: dirs["log"])
+    monkeypatch.setattr(paths, "lock_path", lambda: tmp_path / "smurfsniper.lock")
     return dirs
 
 

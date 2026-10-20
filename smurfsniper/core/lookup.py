@@ -61,7 +61,7 @@ def _seed(player) -> GameSeed:
     return GameSeed(name=player.name, race=player.race_code)
 
 
-def _pick_team(teams: list[LadderTeam], race: str | None) -> LadderTeam | None:
+def pick_team(teams: list[LadderTeam], race: str | None) -> LadderTeam | None:
     """Team for the race played, else the most recently played one."""
     if not teams:
         return None
@@ -315,7 +315,7 @@ class LookupPipeline(QObject):
         teams = self.clients.sc2pulse.character_teams(
             [identity.character.id], queues=[queue], seasons=[season]
         )
-        team = _pick_team(teams, seed.race_code)
+        team = pick_team(teams, seed.race_code)
         cand = identity.candidate
         mmr = team.rating if team and team.rating else cand.rating
         league = team.league_id if team else None

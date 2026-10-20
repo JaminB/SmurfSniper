@@ -6,6 +6,7 @@ code before writing logs, the database or the HTTP cache.
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 
 import platformdirs
@@ -28,6 +29,16 @@ def cache_dir() -> Path:
 
 def log_dir() -> Path:
     return Path(platformdirs.user_log_dir(APP_NAME, APP_AUTHOR))
+
+
+def lock_path() -> Path:
+    """Single-instance lock file (lives in the system temp dir, not the profile)."""
+    return Path(tempfile.gettempdir()) / "smurfsniper.lock"
+
+
+def state_path() -> Path:
+    """Small JSON file for UI bookkeeping that is not user configuration."""
+    return data_dir() / "state.json"
 
 
 def db_path() -> Path:

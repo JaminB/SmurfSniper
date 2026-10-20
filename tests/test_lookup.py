@@ -13,7 +13,7 @@ from smurfsniper.api.sc2pulse import BASE_URL
 from smurfsniper.core.game_state import GameContext
 from smurfsniper.core.lookup import TEAM_SLOT, LookupPipeline
 from smurfsniper.core.profile import LookupUpdate, Stage
-from smurfsniper.models.config import Config, Me, Team
+from smurfsniper.models.config import Config
 from smurfsniper.storage.db import init_db
 from smurfsniper.storage.player_log import PlayerLogStore
 from smurfsniper.ui.legacy_render import LegacyRenderer
@@ -22,7 +22,7 @@ CORE = {Stage.IDENTITY, Stage.RATING, Stage.SMURF, Stage.H2H, Stage.TENDENCIES}
 
 
 def config() -> Config:
-    return Config(me=Me(mmr=7000, name="Me"), team=Team(name="", mmr=0, members=[]))
+    return Config()
 
 
 def ctx(game_id: int = 1, opponents=("Serral",), mode="1v1") -> GameContext:
