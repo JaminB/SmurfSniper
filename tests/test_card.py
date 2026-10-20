@@ -171,3 +171,23 @@ def test_row_create_returns_none_for_empty_parts(qtbot):
     from smurfsniper.ui.overlay.widgets import Part
 
     assert Row.create(TokenContext(), [Part(None), Part(""), None]) is None
+
+
+def test_animated_reveal_grow_and_dismiss(qtbot):
+    """Animations on: rows fade in, geometry animates, dismiss hides after the fade."""
+    c = OpponentCard(TokenContext(), Config().overlays.card.placement, now=lambda: pd.NOW)
+    prof = pd.smurf_profile()
+    c.start(1, [prof.seed], my_race="ZERG")
+    c.reveal()
+    assert c.isVisible()
+    for u in pd.updates_for(1, 0, prof)[1:]:
+        c.apply(u)
+    qtbot.wait(300)
+    assert c.row_count() == 6 and c.windowOpacity() > 0.9
+    assert c.height() == c.target_geometry().height()
+    c.dismiss()
+    assert c.isVisible() and not c.shown  # fading out
+    qtbot.waitUntil(lambda: not c.isVisible(), timeout=2000)
+    c.reveal()  # reusable after dismiss
+    assert c.shown
+    c.hide_now()
