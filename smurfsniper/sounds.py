@@ -1,119 +1,94 @@
+"""Chimes played on one daemon worker thread (never the GUI thread).
+
+WAV bytes are synthesised once and cached; playback uses ``winsound`` with
+``SND_MEMORY`` (synchronous on the worker; ``SND_ASYNC`` is not allowed with
+``SND_MEMORY``). On non-Windows platforms playing is a no-op.
+"""
+
+from __future__ import annotations
+
+import io
 import math
+import queue
 import struct
-import tempfile
+import threading
 import wave
-import winsound
-from pathlib import Path
 
 from smurfsniper.logger import logger
 
-
-def write_tone(wav: wave.Wave_write, freq: float, duration: float, volume: float = 0.4):
-    sample_rate = 44100
-    num_samples = int(sample_rate * duration)
-
-    for i in range(num_samples):
-        t = i / sample_rate
-        sample = math.sin(2 * math.pi * freq * t)
-
-        fade_samples = int(num_samples * 0.05)
-        if i < fade_samples:
-            sample *= i / fade_samples
-        elif i > num_samples - fade_samples:
-            sample *= (num_samples - i) / fade_samples
-
-        sample = int(sample * volume * 32767)
-        wav.writeframes(struct.pack("<h", sample))
+_RATE = 44100
+# kind -> [(frequency Hz, seconds, volume)]
+TONES: dict[str, list[tuple[float, float, float]]] = {
+    "one": [(740.0, 0.18, 0.38)],
+    "two": [(660.0, 0.20, 0.35), (880.0, 0.20, 0.35)],
+    "three": [(587.33, 0.13, 0.34), (880.0, 0.13, 0.34), (1174.66, 0.13, 0.34)],
+}
 
 
-def one_tone_chime():
-    """A single pleasant beep to indicate beginning a query."""
-    temp_dir = Path(tempfile.gettempdir())
-    wav_path = temp_dir / "one_beep_chime.wav"
-
-    if wav_path.exists():
-        wav_path.unlink()
-
-    freq = 740.0
-    duration = 0.18
-
-    with wave.open(str(wav_path), "wb") as wav:
-        wav.setnchannels(1)
-        wav.setsampwidth(2)
-        wav.setframerate(44100)
-        write_tone(wav, freq, duration, volume=0.38)
-
-    winsound.PlaySound(str(wav_path), winsound.SND_FILENAME)
+def _tone_frames(freq: float, duration: float, volume: float) -> bytes:
+    n = int(_RATE * duration)
+    fade = max(1, int(n * 0.05))
+    out = bytearray()
+    for i in range(n):
+        s = math.sin(2 * math.pi * freq * i / _RATE)
+        if i < fade:
+            s *= i / fade
+        elif i > n - fade:
+            s *= (n - i) / fade
+        out += struct.pack("<h", int(s * volume * 32767))
+    return bytes(out)
 
 
-def two_tone_chime():
-    temp_dir = Path(tempfile.gettempdir())
-    wav_path = temp_dir / "two_tone_chime.wav"
-
-    if wav_path.exists():
-        wav_path.unlink()
-
-    tone1 = 660.0  # soft chime A#
-    tone2 = 880.0
-
-    duration1 = 0.20
-    duration2 = 0.20
-
-    with wave.open(str(wav_path), "wb") as wav:
-        wav.setnchannels(1)
-        wav.setsampwidth(2)
-        wav.setframerate(44100)
-        write_tone(wav, tone1, duration1, volume=0.35)
-
-    with wave.open(str(wav_path), "rb") as rf:
-        params = rf.getparams()
-        frames = rf.readframes(rf.getnframes())
-
-    with wave.open(str(wav_path), "wb") as wav:
-        wav.setparams(params)
-        wav.writeframes(frames)  # previous tone
-        write_tone(wav, tone2, duration2, volume=0.35)
-
-    winsound.PlaySound(str(wav_path), winsound.SND_FILENAME)
+def render_wav(kind: str) -> bytes:
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(_RATE)
+        for tone in TONES[kind]:
+            w.writeframes(_tone_frames(*tone))
+    return buf.getvalue()
 
 
-def footprint_chime():
-    """A distinct three-tone rising arpeggio: opponent has a cross-network
-    footprint worth checking with Ctrl+F2.
+class SoundPlayer:
+    def __init__(self, *, enabled: bool = True):
+        self.enabled = enabled
+        self._cache: dict[str, bytes] = {}
+        self._queue: queue.Queue[str | None] = queue.Queue()
+        self._thread: threading.Thread | None = None
 
-    Audio is best-effort: file I/O or ``winsound`` failures (permissions, disk,
-    driver) are logged and swallowed so a chime can never break the game flow.
-    """
-    try:
-        temp_dir = Path(tempfile.gettempdir())
-        wav_path = temp_dir / "footprint_chime.wav"
+    def play(self, kind: str) -> None:
+        """Queue a chime (``one``, ``two`` or ``three``). Never blocks or raises."""
+        if not self.enabled or kind not in TONES:
+            return
+        if self._thread is None:
+            self._thread = threading.Thread(target=self._run, name="sounds", daemon=True)
+            self._thread.start()
+        self._queue.put(kind)
 
-        if wav_path.exists():
-            wav_path.unlink()
+    def stop(self) -> None:
+        if self._thread is not None:
+            self._queue.put(None)
+            self._thread.join(timeout=2)
+            self._thread = None
 
-        tones = [587.33, 880.0, 1174.66]  # D5 · A5 · D6 rising arpeggio
-        duration = 0.13
+    def _run(self) -> None:
+        while True:
+            kind = self._queue.get()
+            if kind is None:
+                return
+            try:
+                data = self._cache.get(kind)
+                if data is None:
+                    data = self._cache[kind] = render_wav(kind)
+                self._play(data)
+            except Exception as e:  # audio is nice-to-have
+                logger.debug(f"chime {kind} failed: {e}")
 
-        # First tone establishes the file params; later tones are appended.
-        with wave.open(str(wav_path), "wb") as wav:
-            wav.setnchannels(1)
-            wav.setsampwidth(2)
-            wav.setframerate(44100)
-            write_tone(wav, tones[0], duration, volume=0.34)
-
-        for tone in tones[1:]:
-            with wave.open(str(wav_path), "rb") as rf:
-                params = rf.getparams()
-                frames = rf.readframes(rf.getnframes())
-            with wave.open(str(wav_path), "wb") as wav:
-                wav.setparams(params)
-                wav.writeframes(frames)  # previous tones
-                write_tone(wav, tone, duration, volume=0.34)
-
-        winsound.PlaySound(str(wav_path), winsound.SND_FILENAME)
-    except Exception as e:  # audio is nice-to-have; never break game flow
-        logger.warning(f"footprint_chime failed: {e}")
-
-
-if __name__ == "__main__":
-    footprint_chime()
+    @staticmethod
+    def _play(data: bytes) -> None:
+        try:
+            import winsound
+        except ImportError:
+            return
+        winsound.PlaySound(data, winsound.SND_MEMORY)
