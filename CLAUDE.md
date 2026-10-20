@@ -90,7 +90,8 @@ not on screen. An SC2Pulse failure on IDENTITY toasts once per game.
 
 Top level (`smurfsniper/`):
 - `cli.py` — Click CLI: `run`, `validate`, `cache stats|clear`, hidden `self-test` (CI exe
-  smoke test: imports every module, loads assets, builds the Settings window).
+  smoke test: imports every module, loads assets, builds the Settings window and renders
+  a full opponent card and the intel panel).
 - `service.py` — `Service` (wires poller -> bus -> pipeline, player-log writes, pause, tray
   status text, `request_redetect()`). It creates no widgets; the HUD subscribes to the bus and
   the pipeline.

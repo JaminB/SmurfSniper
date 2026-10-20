@@ -208,6 +208,7 @@ def self_test(output: Path) -> None:
 
         window = SettingsWindow(Config())
         window.deleteLater()
+        _self_test_hud()
         del app
         result: dict[str, Any] = {
             "version": VERSION,
@@ -222,6 +223,37 @@ def self_test(output: Path) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(result), encoding="utf-8")
     sys.exit(code)
+
+
+def _self_test_hud() -> None:
+    """Build and render a full opponent card and the intel panel (animations off)."""
+    from PySide6.QtGui import QImage
+
+    from smurfsniper.ui import preview_data as pd
+    from smurfsniper.ui.overlay import OpponentCard, Panel, set_animations_enabled
+    from smurfsniper.ui.panels.intel import build_intel_body
+    from smurfsniper.ui.tokens import TokenContext
+
+    set_animations_enabled(False)
+    try:
+        tk, ov = TokenContext(), Config().overlays
+        card = OpponentCard(tk, ov.card.placement, now=lambda: pd.NOW)
+        prof = pd.smurf_profile()
+        card.start(1, [prof.seed], my_race="ZERG")
+        for u in pd.updates_for(1, 0, prof):
+            card.apply(u)
+        panel = Panel("Scouting intel", "Ctrl+Shift+2", tk, ov.panels.placement)
+        panel.set_body(build_intel_body([pd.intel_profile()], tk) or [])
+        for w in (card, panel):
+            w.reveal()
+            img = QImage(w.size(), QImage.Format.Format_ARGB32_Premultiplied)
+            img.fill(0)
+            w.render(img)
+            w.hide_now()
+        if card.row_count() < 6:
+            raise RuntimeError(f"opponent card built {card.row_count()} rows, expected 6")
+    finally:
+        set_animations_enabled(True)
 
 
 def main() -> None:
