@@ -197,8 +197,7 @@ class ConfigEditorDialog(QDialog):
                 ],
             },
             "preferences": {
-                yaml_key: group.to_yaml_dict()
-                for yaml_key, group in self.overlay_groups.items()
+                yaml_key: group.to_yaml_dict() for yaml_key, group in self.overlay_groups.items()
             },
             "integrations": {
                 "aligulac": {"api_key": self.aligulac_key.text()},

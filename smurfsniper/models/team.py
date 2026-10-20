@@ -1,5 +1,3 @@
-from typing import Dict, List, Optional
-
 from pydantic import BaseModel
 
 from smurfsniper.api import sc2pulse
@@ -13,15 +11,15 @@ class TeamLeague(BaseModel):
 
 
 class Clan(BaseModel):
-    tag: Optional[str] = None
-    id: Optional[int] = None
-    region: Optional[str] = None
-    name: Optional[str] = None
-    members: Optional[int] = None
-    activeMembers: Optional[int] = None
-    avgRating: Optional[int] = None
-    avgLeagueType: Optional[int] = None
-    games: Optional[int] = None
+    tag: str | None = None
+    id: int | None = None
+    region: str | None = None
+    name: str | None = None
+    members: int | None = None
+    activeMembers: int | None = None
+    avgRating: int | None = None
+    avgLeagueType: int | None = None
+    games: int | None = None
 
 
 class Character(BaseModel):
@@ -31,30 +29,30 @@ class Character(BaseModel):
     accountId: int
     region: str
     battlenetId: int
-    tag: Optional[str] = None
-    discriminator: Optional[int] = None
+    tag: str | None = None
+    discriminator: int | None = None
 
 
 class Account(BaseModel):
     battleTag: str
     id: int
     partition: str
-    hidden: Optional[bool] = None
-    tag: Optional[str] = None
-    discriminator: Optional[int] = None
+    hidden: bool | None = None
+    tag: str | None = None
+    discriminator: int | None = None
 
 
 class TeamMember(BaseModel):
-    protossGamesPlayed: Optional[int] = 0
-    terranGamesPlayed: Optional[int] = 0
-    zergGamesPlayed: Optional[int] = 0
-    randomGamesPlayed: Optional[int] = 0
+    protossGamesPlayed: int | None = 0
+    terranGamesPlayed: int | None = 0
+    zergGamesPlayed: int | None = 0
+    randomGamesPlayed: int | None = 0
 
     character: Character
     account: Account
-    clan: Optional[Clan] = None
+    clan: Clan | None = None
 
-    raceGames: Dict[str, int]
+    raceGames: dict[str, int]
 
     @classmethod
     def merge(cls, members: list["TeamMember"]) -> "TeamMember":
@@ -93,25 +91,25 @@ class Team(BaseModel):
 
     id: int
     legacyId: str
-    divisionId: Optional[int]
+    divisionId: int | None
     season: int
     region: str
 
     league: TeamLeague
 
-    globalRank: Optional[int] = None
-    regionRank: Optional[int] = None
-    leagueRank: Optional[int] = None
+    globalRank: int | None = None
+    regionRank: int | None = None
+    leagueRank: int | None = None
 
-    lastPlayed: Optional[str] = None
-    joined: Optional[str] = None
-    primaryDataUpdated: Optional[str] = None
+    lastPlayed: str | None = None
+    joined: str | None = None
+    primaryDataUpdated: str | None = None
 
-    members: List[TeamMember]
+    members: list[TeamMember]
 
-    globalTeamCount: Optional[int] = None
-    regionTeamCount: Optional[int] = None
-    leagueTeamCount: Optional[int] = None
+    globalTeamCount: int | None = None
+    regionTeamCount: int | None = None
+    leagueTeamCount: int | None = None
 
     queueType: int
     teamType: int
@@ -119,10 +117,10 @@ class Team(BaseModel):
 
     legacyUid: str
 
-    _match_history_cache: Optional[TeamHistory] = None
+    _match_history_cache: TeamHistory | None = None
 
     @classmethod
-    def merge(cls, teams: List["Team"]) -> "Team":
+    def merge(cls, teams: list["Team"]) -> "Team":
         if not teams:
             raise ValueError("No teams provided for merge")
 
@@ -130,9 +128,7 @@ class Team(BaseModel):
             teams, key=lambda t: t.lastPlayed or t.primaryDataUpdated or t.joined or ""
         )
 
-        first_joined = min(
-            [team for team in teams if team.joined], key=lambda t: t.joined
-        ).joined
+        first_joined = min([team for team in teams if team.joined], key=lambda t: t.joined).joined
 
         total_wins = sum(t.wins for t in teams)
         total_losses = sum(t.losses for t in teams)
@@ -145,9 +141,7 @@ class Team(BaseModel):
                 bid = member.character.battlenetId
                 members_by_id.setdefault(bid, []).append(member)
 
-        merged_members = [
-            TeamMember.merge(member_group) for member_group in members_by_id.values()
-        ]
+        merged_members = [TeamMember.merge(member_group) for member_group in members_by_id.values()]
 
         return cls(
             wins=total_wins,
@@ -177,7 +171,7 @@ class Team(BaseModel):
         )
 
     @property
-    def match_history(self) -> Optional[TeamHistory]:
+    def match_history(self) -> TeamHistory | None:
 
         if self._match_history_cache is not None:
             return self._match_history_cache

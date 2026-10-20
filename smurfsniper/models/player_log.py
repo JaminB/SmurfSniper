@@ -1,8 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
-from peewee import (CharField, Check, DateTimeField, IntegerField, Model,
-                    SqliteDatabase)
+from peewee import CharField, Check, DateTimeField, IntegerField, Model, SqliteDatabase
 from platformdirs import user_data_dir
 
 from smurfsniper.models.player import Player, PlayerStats
@@ -38,9 +37,7 @@ class PlayerLog(BaseModel):
     region = CharField()
     account_id = IntegerField()
 
-    match_status = CharField(
-        constraints=[Check("match_status IN ('victory', 'defeat', 'tie')")]
-    )
+    match_status = CharField(constraints=[Check("match_status IN ('victory', 'defeat', 'tie')")])
 
     mmr = IntegerField()
     created_at = DateTimeField(default=datetime.utcnow)

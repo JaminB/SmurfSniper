@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 from pydantic import BaseModel, PrivateAttr
 
 from smurfsniper.api import sc2pulse
@@ -13,13 +11,13 @@ class Character(BaseModel):
     accountId: int
     region: str
     battlenetId: int
-    tag: Optional[str] = None
-    discriminator: Optional[int] = None
+    tag: str | None = None
+    discriminator: int | None = None
 
-    _team_cache: Optional[List[Team]] = PrivateAttr(default=None)
+    _team_cache: list[Team] | None = PrivateAttr(default=None)
 
     @property
-    def teams(self) -> List[Team]:
+    def teams(self) -> list[Team]:
         if self._team_cache is not None:
             return self._team_cache
 

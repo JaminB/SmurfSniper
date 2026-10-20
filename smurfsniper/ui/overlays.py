@@ -1,6 +1,5 @@
 from PySide6.QtCore import QEventLoop, Qt, QTimer
-from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from smurfsniper.ui.overlay_manager import register_overlay
 
@@ -27,9 +26,7 @@ class Overlay(QWidget):
         line-height: 140%;
     """
 
-    def __init__(
-        self, duration_seconds: int = 40, position: str = "top_center", parent=None
-    ):
+    def __init__(self, duration_seconds: int = 40, position: str = "top_center", parent=None):
         super().__init__(parent)
 
         self.duration_seconds = duration_seconds

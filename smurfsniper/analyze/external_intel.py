@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 from PySide6.QtCore import QTimer
 
@@ -52,7 +51,7 @@ def _activity_sparkline(hour_counts: Counter) -> str:
     return "".join(out)
 
 
-def _peak_window(hour_counts: Counter) -> Optional[str]:
+def _peak_window(hour_counts: Counter) -> str | None:
     """Most-active 3-hour window, e.g. '19–22h'."""
     if not hour_counts:
         return None
@@ -66,14 +65,14 @@ def _peak_window(hour_counts: Counter) -> Optional[str]:
     return f"{best_start:02d}–{(best_start + 3) % 24:02d}h"
 
 
-def _fmt_seconds(secs: Optional[int]) -> Optional[str]:
+def _fmt_seconds(secs: int | None) -> str | None:
     if not secs:
         return None
     m, s = divmod(int(secs), 60)
     return f"{m}m{s:02d}s" if m else f"{s}s"
 
 
-def _current_streak(matches: List[RecentMatch]) -> str:
+def _current_streak(matches: list[RecentMatch]) -> str:
     """Streak from most-recent match backwards, e.g. 'W3' / 'L2'."""
     if not matches:
         return ""
@@ -96,13 +95,13 @@ class BehaviorProfile:
     wins: int
     losses: int
     streak: str
-    peak_window: Optional[str]
+    peak_window: str | None
     activity: str
-    top_maps: List[Tuple[str, int, int]]  # (map, wins, losses)
-    avg_duration: Optional[str]
+    top_maps: list[tuple[str, int, int]]  # (map, wins, losses)
+    avg_duration: str | None
 
     @classmethod
-    def from_stats(cls, stats: PlayerStats) -> Optional["BehaviorProfile"]:
+    def from_stats(cls, stats: PlayerStats) -> BehaviorProfile | None:
         matches = ladder_only(stats.recent_matches())
         if not matches:
             return None
@@ -113,7 +112,7 @@ class BehaviorProfile:
 
         records = map_records(matches)
         top_maps = sorted(
-            ((name, w, l) for name, (w, l) in records.items()),
+            ((name, w, lo) for name, (w, lo) in records.items()),
             key=lambda r: r[1] + r[2],
             reverse=True,
         )[:3]
@@ -129,8 +128,8 @@ class BehaviorProfile:
             avg_duration=_fmt_seconds(avg_duration_seconds(matches)),
         )
 
-    def to_lines(self) -> List[str]:
-        lines: List[str] = []
+    def to_lines(self) -> list[str]:
+        lines: list[str] = []
         form = f"Form: {self.wins}W/{self.losses}L (last {self.games})"
         if self.streak:
             form += f"  streak {self.streak}"
@@ -145,7 +144,7 @@ class BehaviorProfile:
             lines.append(act.rstrip())
 
         if self.top_maps:
-            maps = "  ".join(f"{name} {w}-{l}" for name, w, l in self.top_maps)
+            maps = "  ".join(f"{name} {w}-{lo}" for name, w, lo in self.top_maps)
             lines.append(f"Maps: {maps}")
 
         if self.avg_duration:
@@ -158,23 +157,21 @@ class BehaviorProfile:
 class ExternalIntel:
     name: str
     region: str
-    behavior: Optional[BehaviorProfile] = None
-    aligulac: Optional[dict] = None
-    liquipedia: Optional[Tuple[str, str]] = None
-    twitch_live: Optional[dict] = None
-    handle_urls: Dict[str, str] = field(default_factory=dict)
-    social_links: Dict[str, str] = field(default_factory=dict)
-    battlenet_url: Optional[str] = None
+    behavior: BehaviorProfile | None = None
+    aligulac: dict | None = None
+    liquipedia: tuple[str, str] | None = None
+    twitch_live: dict | None = None
+    handle_urls: dict[str, str] = field(default_factory=dict)
+    social_links: dict[str, str] = field(default_factory=dict)
+    battlenet_url: str | None = None
 
     @property
-    def linked_socials(self) -> Dict[str, str]:
+    def linked_socials(self) -> dict[str, str]:
         """Self-declared profile links worth showing — i.e. ``social_links``
         minus the ``BATTLE_NET`` deep-link, which every account has and is
         rendered separately as a clean web URL."""
         return {
-            plat: url
-            for plat, url in self.social_links.items()
-            if plat != "BATTLE_NET" and url
+            plat: url for plat, url in self.social_links.items() if plat != "BATTLE_NET" and url
         }
 
     @property
@@ -193,7 +190,7 @@ class ExternalIntel:
         )
 
     @classmethod
-    def gather(cls, stats: PlayerStats) -> "ExternalIntel":
+    def gather(cls, stats: PlayerStats) -> ExternalIntel:
         """Build the scouting profile. Network calls run here, off the Qt thread.
 
         The behavioral profile is always computed (own match data). Precise
@@ -219,11 +216,9 @@ class ExternalIntel:
         except Exception as exc:  # never break the scout on a links lookup
             logger.warning(f"social_links lookup failed for {name!r}: {exc}")
             social = {}
-        battlenet = cross_network.battlenet_profile_url(
-            char.region, char.realm, char.battlenetId
-        )
+        battlenet = cross_network.battlenet_profile_url(char.region, char.realm, char.battlenetId)
 
-        handle_urls: Dict[str, str] = {}
+        handle_urls: dict[str, str] = {}
         if cross_network.is_distinctive_name(name):
             logger.info(f"Ctrl+F2: resolving handle URLs for {name!r}.")
             handle_urls = cross_network.resolved_handle_urls(name)
@@ -252,11 +247,13 @@ class ExternalIntel:
 
         if self.aligulac:
             bio = " · ".join(
-                p for p in (
+                p
+                for p in (
                     self.aligulac.get("country"),
                     self.aligulac.get("name"),
                     self.aligulac.get("race"),
-                ) if p
+                )
+                if p
             )
             url = self.aligulac.get("profile_url")
             lines.append(f"Aligulac: {bio or '?'}" + (f"\n  {url}" if url else ""))
@@ -268,9 +265,7 @@ class ExternalIntel:
         # linked_socials already drops the BATTLE_NET deep-link (rendered below
         # as a clean web profile URL).
         if self.linked_socials:
-            linked = "  ".join(
-                f"{plat}: {url}" for plat, url in self.linked_socials.items()
-            )
+            linked = "  ".join(f"{plat}: {url}" for plat, url in self.linked_socials.items())
             lines.append(f"Linked: {linked}")
 
         if self.battlenet_url:
@@ -282,9 +277,7 @@ class ExternalIntel:
             lines.append(f"🔴 Twitch LIVE: {title}" + (f"\n  {url}" if url else ""))
 
         if self.handle_urls:
-            links = "  ".join(
-                f"{plat}: {url}" for plat, url in self.handle_urls.items()
-            )
+            links = "  ".join(f"{plat}: {url}" for plat, url in self.handle_urls.items())
             lines.append(links)
 
         if len(lines) == 1:
@@ -309,9 +302,7 @@ def show_hint_overlay(prefs: OverlayPreferences) -> None:
     QTimer.singleShot(int(delay * 1000), ov.show)
 
 
-def render_overlay(
-    intels: List[ExternalIntel], prefs: OverlayPreferences
-) -> None:
+def render_overlay(intels: list[ExternalIntel], prefs: OverlayPreferences) -> None:
     """Build and show the scouting overlay. Must run on the Qt thread.
 
     Opening the F2 overlay closes any overlays currently on screen first.

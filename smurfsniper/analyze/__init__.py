@@ -65,7 +65,7 @@ class BaseAnalysis:
         mean_x = sum(x) / n
         mean_y = sum(y) / n
 
-        num = sum((xi - mean_x) * (yi - mean_y) for xi, yi in zip(x, y))
+        num = sum((xi - mean_x) * (yi - mean_y) for xi, yi in zip(x, y, strict=False))
         den = sum((xi - mean_x) ** 2 for xi in x)
         if den == 0:
             return "unknown"

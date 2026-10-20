@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel
 
@@ -10,7 +9,7 @@ from pydantic import BaseModel
 LADDER_TYPES = {"_1V1", "_2V2", "_3V3", "_4V4", "ARCHON"}
 
 
-def ladder_only(matches: List["RecentMatch"]) -> List["RecentMatch"]:
+def ladder_only(matches: list[RecentMatch]) -> list[RecentMatch]:
     return [m for m in matches if m.type in LADDER_TYPES]
 
 
@@ -24,14 +23,14 @@ class RecentMatch(BaseModel):
     date: datetime
     type: str
     region: str
-    map_name: Optional[str] = None
-    duration: Optional[int] = None
-    decision: Optional[str] = None  # "WIN" / "LOSS" / "TIE"
-    opponent_id: Optional[int] = None
-    rating_change: Optional[int] = None
+    map_name: str | None = None
+    duration: int | None = None
+    decision: str | None = None  # "WIN" / "LOSS" / "TIE"
+    opponent_id: int | None = None
+    rating_change: int | None = None
 
     @classmethod
-    def from_raw(cls, entry: dict, character_id: int) -> Optional["RecentMatch"]:
+    def from_raw(cls, entry: dict, character_id: int) -> RecentMatch | None:
         """Parse one /character-matches result entry for ``character_id``.
 
         Returns None if the player's own participant row cannot be found.
@@ -68,9 +67,9 @@ class RecentMatch(BaseModel):
         )
 
 
-def map_records(matches: List[RecentMatch]) -> Dict[str, Tuple[int, int]]:
+def map_records(matches: list[RecentMatch]) -> dict[str, tuple[int, int]]:
     """Per-map (wins, losses) aggregated over the given matches."""
-    records: Dict[str, Tuple[int, int]] = {}
+    records: dict[str, tuple[int, int]] = {}
     for m in matches:
         if not m.map_name:
             continue
@@ -83,7 +82,7 @@ def map_records(matches: List[RecentMatch]) -> Dict[str, Tuple[int, int]]:
     return records
 
 
-def avg_duration_seconds(matches: List[RecentMatch]) -> Optional[int]:
+def avg_duration_seconds(matches: list[RecentMatch]) -> int | None:
     """Average match duration (seconds), ignoring matches with no duration."""
     durations = [m.duration for m in matches if m.duration]
     if not durations:

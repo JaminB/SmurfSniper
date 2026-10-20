@@ -14,7 +14,6 @@ is base-url-bound and is not reused here.
 from __future__ import annotations
 
 import re
-from typing import Dict, Optional, Tuple
 
 import httpx
 
@@ -46,10 +45,10 @@ _MIN_NAME_LEN = 4
 # Characters barcodes are built from (visually identical verticals).
 _BARCODE_CHARS = set("il1|")
 
-_aligulac_client: Optional[httpx.Client] = None
-_liquipedia_client: Optional[httpx.Client] = None
+_aligulac_client: httpx.Client | None = None
+_liquipedia_client: httpx.Client | None = None
 # Pooled client with no base_url for absolute-URL social-network resolve checks.
-_social_client: Optional[httpx.Client] = None
+_social_client: httpx.Client | None = None
 
 
 def _client(which: str) -> httpx.Client:
@@ -57,26 +56,29 @@ def _client(which: str) -> httpx.Client:
     if which == "aligulac":
         if _aligulac_client is None:
             _aligulac_client = httpx.Client(
-                base_url=ALIGULAC_BASE, timeout=TIMEOUT,
+                base_url=ALIGULAC_BASE,
+                timeout=TIMEOUT,
                 headers={"User-Agent": USER_AGENT},
             )
         return _aligulac_client
     if which == "social":
         if _social_client is None:
             _social_client = httpx.Client(
-                timeout=TIMEOUT, follow_redirects=True,
+                timeout=TIMEOUT,
+                follow_redirects=True,
                 headers={"User-Agent": USER_AGENT},
             )
         return _social_client
     if _liquipedia_client is None:
         _liquipedia_client = httpx.Client(
-            base_url=LIQUIPEDIA_BASE, timeout=TIMEOUT,
+            base_url=LIQUIPEDIA_BASE,
+            timeout=TIMEOUT,
             headers={"User-Agent": USER_AGENT},
         )
     return _liquipedia_client
 
 
-def set_aligulac_api_key(key: Optional[str]) -> None:
+def set_aligulac_api_key(key: str | None) -> None:
     """Set the Aligulac API key (from config). Empty/None disables Aligulac."""
     global _aligulac_api_key
     _aligulac_api_key = (key or "").strip()
@@ -133,7 +135,7 @@ def is_distinctive_name(name: str) -> bool:
     return 0 < exact <= _MAX_EXACT_CANDIDATES
 
 
-def aligulac_player(name: str) -> Optional[dict]:
+def aligulac_player(name: str) -> dict | None:
     """Look up a player on Aligulac by exact (casefold) tag match.
 
     Returns ``{name, country, race, profile_url}`` for the first matching player,
@@ -176,7 +178,7 @@ def aligulac_player(name: str) -> Optional[dict]:
     return None
 
 
-def liquipedia_page(name: str) -> Optional[Tuple[str, str]]:
+def liquipedia_page(name: str) -> tuple[str, str] | None:
     """Search the StarCraft2 Liquipedia wiki via opensearch.
 
     Returns ``(title, url)`` of the first hit whose title casefold-matches the
@@ -207,13 +209,13 @@ def liquipedia_page(name: str) -> Optional[Tuple[str, str]]:
     # Exact title match only: this lookup is no longer behind the
     # distinctiveness gate, so a loose first-hit fallback would attach wrong
     # wiki pages to common names.
-    for title, url in zip(titles, urls):
+    for title, url in zip(titles, urls, strict=False):
         if title and url and title.strip().casefold() == base:
             return title, url
     return None
 
 
-def twitch_live(character_id: int) -> Optional[dict]:
+def twitch_live(character_id: int) -> dict | None:
     """Return ``{title, url}`` if SC2Pulse lists this character live on Twitch.
 
     Reuses the cached ``sc2pulse.streams()`` list (no new key). Returns ``None``
@@ -239,7 +241,7 @@ def twitch_live(character_id: int) -> Optional[dict]:
     return None
 
 
-def _twitch_url_if_active(handle: str) -> Optional[str]:
+def _twitch_url_if_active(handle: str) -> str | None:
     """Twitch URL if this login exists *and* has content (a live stream or at
     least one past video), else ``None``.
 
@@ -273,7 +275,7 @@ def _twitch_url_if_active(handle: str) -> Optional[str]:
     return f"https://twitch.tv/{handle}" if (is_live or has_videos) else None
 
 
-def _youtube_url_if_active(handle: str) -> Optional[str]:
+def _youtube_url_if_active(handle: str) -> str | None:
     """YouTube channel URL if ``@handle`` resolves *and* has at least one
     uploaded video, else ``None``.
 
@@ -293,9 +295,7 @@ def _youtube_url_if_active(handle: str) -> Optional[str]:
     return url if '"videoId"' in resp.text else None
 
 
-def battlenet_profile_url(
-    region: str, realm: int, profile_id: int
-) -> Optional[str]:
+def battlenet_profile_url(region: str, realm: int, profile_id: int) -> str | None:
     """Official Blizzard SC2 career profile URL for a matched account.
 
     Deterministic from identity we already hold (region/realm/battlenetId), so
@@ -307,13 +307,10 @@ def battlenet_profile_url(
         region_id = Region[region].value
     except KeyError:
         return None
-    return (
-        f"https://starcraft2.blizzard.com/en-us/profile/"
-        f"{region_id}/{realm}/{profile_id}/"
-    )
+    return f"https://starcraft2.blizzard.com/en-us/profile/{region_id}/{realm}/{profile_id}/"
 
 
-def resolved_handle_urls(name: str) -> Dict[str, str]:
+def resolved_handle_urls(name: str) -> dict[str, str]:
     """Same-handle profile URLs on Twitch / YouTube that have actual content.
 
     A platform is only included when the account exists *and* has content (a
@@ -325,7 +322,7 @@ def resolved_handle_urls(name: str) -> Dict[str, str]:
     if not handle:
         return {}
 
-    resolved: Dict[str, str] = {}
+    resolved: dict[str, str] = {}
     twitch = _twitch_url_if_active(handle)
     if twitch:
         resolved["Twitch"] = twitch

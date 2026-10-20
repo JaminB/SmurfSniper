@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Tuple
 
 from pydantic import BaseModel, ConfigDict
 from PySide6.QtCore import QTimer
@@ -13,7 +12,7 @@ from smurfsniper.ui.overlays import Overlay
 class PlayerLogAnalysis(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    logs: List[PlayerLog]
+    logs: list[PlayerLog]
 
     @classmethod
     def from_battlenet_id(cls, battlenet_id: int, limit: int = 40):
@@ -36,12 +35,12 @@ class PlayerLogAnalysis(BaseModel):
         return self.logs[0].region
 
     @property
-    def first_encounter(self) -> Tuple[datetime, str]:
+    def first_encounter(self) -> tuple[datetime, str]:
         last = self.logs[-1]
         return last.created_at, last.match_status
 
     @property
-    def last_encounter(self) -> Tuple[datetime, str]:
+    def last_encounter(self) -> tuple[datetime, str]:
         first = self.logs[0]
         return first.created_at, first.match_status
 
@@ -58,7 +57,7 @@ class PlayerLogAnalysis(BaseModel):
         return len(self.logs)
 
     @property
-    def record_vs_me(self) -> Tuple[int, int, int]:
+    def record_vs_me(self) -> tuple[int, int, int]:
         wins = losses = ties = 0
         for log in self.logs:
             outcome = self._map_to_me(log.match_status)

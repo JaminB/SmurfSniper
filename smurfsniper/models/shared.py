@@ -1,15 +1,13 @@
-from typing import Optional
-
 from pydantic import BaseModel
 
 
 class PreviousStats(BaseModel):
-    rating: Optional[int]
-    gamesPlayed: Optional[int]
-    rank: Optional[int]
+    rating: int | None
+    gamesPlayed: int | None
+    rank: int | None
 
 
 class CurrentStats(BaseModel):
-    rating: Optional[int]
-    gamesPlayed: Optional[int]
-    rank: Optional[int]
+    rating: int | None
+    gamesPlayed: int | None
+    rank: int | None

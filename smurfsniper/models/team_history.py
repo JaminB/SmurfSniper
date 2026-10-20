@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from statistics import pstdev
-from typing import Dict, List, Optional
 
 from pydantic import BaseModel, computed_field, field_validator
 
@@ -12,7 +11,7 @@ class TeamHistoryPoint(BaseModel):
     rating: int
 
     @classmethod
-    def from_raw(cls, ts: int, rating: int) -> "TeamHistoryPoint":
+    def from_raw(cls, ts: int, rating: int) -> TeamHistoryPoint:
         return cls(timestamp=datetime.utcfromtimestamp(ts), rating=rating)
 
 
@@ -21,8 +20,8 @@ class TeamStaticData(BaseModel):
 
 
 class TeamHistoryData(BaseModel):
-    TIMESTAMP: List[int]
-    RATING: List[int]
+    TIMESTAMP: list[int]
+    RATING: list[int]
 
     @field_validator("RATING")
     def matching_lengths(cls, v, info):
@@ -31,31 +30,29 @@ class TeamHistoryData(BaseModel):
             raise ValueError("TIMESTAMP and RATING must have same length")
         return v
 
-    def to_points(self) -> List[TeamHistoryPoint]:
+    def to_points(self) -> list[TeamHistoryPoint]:
         return [
             TeamHistoryPoint.from_raw(ts, rating)
-            for ts, rating in zip(self.TIMESTAMP, self.RATING)
+            for ts, rating in zip(self.TIMESTAMP, self.RATING, strict=False)
         ]
 
 
 class TeamHistory(BaseModel):
     legacy_uid: str
-    timestamps: List[datetime]
-    ratings: List[int]
+    timestamps: list[datetime]
+    ratings: list[int]
 
     @computed_field
     @property
-    def mmr_deltas(self) -> List[int]:
-        return [
-            self.ratings[i] - self.ratings[i - 1] for i in range(1, len(self.ratings))
-        ]
+    def mmr_deltas(self) -> list[int]:
+        return [self.ratings[i] - self.ratings[i - 1] for i in range(1, len(self.ratings))]
 
-    def _count_recent(self, days: int) -> Dict[str, int]:
+    def _count_recent(self, days: int) -> dict[str, int]:
         cutoff = datetime.utcnow() - timedelta(days=days)
         wins = 0
         losses = 0
 
-        for ts, delta in zip(self.timestamps[1:], self.mmr_deltas):
+        for ts, delta in zip(self.timestamps[1:], self.mmr_deltas, strict=False):
             if days != -1 and ts < cutoff:
                 continue
             if delta > 0:
@@ -126,11 +123,11 @@ class TeamHistory(BaseModel):
         return self._count_recent(-1)["losses"]
 
     @property
-    def first_game_played(self) -> Optional[datetime]:
+    def first_game_played(self) -> datetime | None:
         return min(self.timestamps)
 
     @property
-    def last_game_played(self) -> Optional[datetime]:
+    def last_game_played(self) -> datetime | None:
         return max(self.timestamps)
 
     @property
@@ -197,7 +194,7 @@ class TeamHistory(BaseModel):
 
         cutoff = datetime.utcnow() - timedelta(days=days)
 
-        points = [r for ts, r in zip(self.timestamps, self.ratings) if ts >= cutoff]
+        points = [r for ts, r in zip(self.timestamps, self.ratings, strict=False) if ts >= cutoff]
 
         if len(points) < 3:
             points = self.ratings[-20:]

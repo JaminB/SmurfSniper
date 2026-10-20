@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, PrivateAttr
 from PySide6.QtCore import QTimer
@@ -19,7 +19,7 @@ from smurfsniper.models.player import Player, PlayerStats
 from smurfsniper.ui.overlays import Overlay
 from smurfsniper.utils import human_friendly_duration
 
-_TREND_SYMBOLS: Dict[str, str] = {
+_TREND_SYMBOLS: dict[str, str] = {
     "strong rising": "▲▲",
     "rising": "▲",
     "falling": "▼",
@@ -33,7 +33,7 @@ def _trend_symbol(trend: str) -> str:
     return _TREND_SYMBOLS.get(trend, "?")
 
 
-def _sparkline_for(player_analysis: "PlayerAnalysis", days: int = 7) -> str:
+def _sparkline_for(player_analysis: PlayerAnalysis, days: int = 7) -> str:
     hist = player_analysis.player_stats.match_history
     if not hist:
         return ""
@@ -41,11 +41,11 @@ def _sparkline_for(player_analysis: "PlayerAnalysis", days: int = 7) -> str:
 
 
 def _top_teammate_rows(
-    p: "PlayerAnalysis",
+    p: PlayerAnalysis,
     limit: int = 3,
     include_games: bool = False,
-) -> List[str]:
-    rows: List[str] = []
+) -> list[str]:
+    rows: list[str] = []
     for idx, (name, info) in enumerate(p.teammates.items()):
         if idx >= limit:
             break
@@ -60,7 +60,7 @@ def _top_teammate_rows(
 
 
 class PlayerAnalysis(BaseAnalysis, BaseModel):
-    current_race: Optional[str] = None
+    current_race: str | None = None
     player_stats: PlayerStats
 
     _latest_team_cache: Any = PrivateAttr(default=None)
@@ -71,7 +71,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return self.player_stats.match_history
 
     @classmethod
-    def from_player_name(cls, str_player_name: str) -> "PlayerAnalysis":
+    def from_player_name(cls, str_player_name: str) -> PlayerAnalysis:
         str_player_name = str_player_name.strip()
         return cls.from_player(
             Player(
@@ -84,15 +84,15 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         )
 
     @classmethod
-    def from_player(cls, player: Player) -> "PlayerAnalysis":
+    def from_player(cls, player: Player) -> PlayerAnalysis:
         best_match = player.get_player_stats()
         stats = PlayerStats.model_validate(best_match)
         return cls(player_stats=stats)
 
     @classmethod
     def from_player_stats(
-        cls, player_stats: PlayerStats, player: Optional[Player] = None
-    ) -> "PlayerAnalysis":
+        cls, player_stats: PlayerStats, player: Player | None = None
+    ) -> PlayerAnalysis:
         current_race = "Unknown"
         if player and player.race is not None:
             current_race = RaceCode.from_alias(player.race).name
@@ -107,14 +107,11 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return League.from_int(self.player_stats.leagueMax).name
 
     @property
-    def current_mmr(self) -> Optional[int]:
-        return (
-            self.player_stats.currentStats.rating
-            or self.player_stats.previousStats.rating
-        )
+    def current_mmr(self) -> int | None:
+        return self.player_stats.currentStats.rating or self.player_stats.previousStats.rating
 
     @property
-    def previous_mmr(self) -> Optional[int]:
+    def previous_mmr(self) -> int | None:
         return self.player_stats.previousStats.rating
 
     @property
@@ -148,7 +145,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return round(self.total_games / max(self.account_age_days, 1), 1)
 
     @property
-    def peak_gap(self) -> Optional[int]:
+    def peak_gap(self) -> int | None:
         """ratingMax − current MMR. Large gap = decayed/returning strong player."""
         if self.current_mmr is None:
             return None
@@ -162,7 +159,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return self.current_race != self.most_played_race
 
     @property
-    def current_league(self) -> Optional[str]:
+    def current_league(self) -> str | None:
         """League of the player's current team (vs leagueMax ceiling)."""
         team = self._latest_team
         if team is None:
@@ -170,7 +167,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return League.from_int(team.leagueType).name
 
     @property
-    def rank_percentile(self) -> Optional[float]:
+    def rank_percentile(self) -> float | None:
         """Percent of the global ladder this player outranks (higher = better).
 
         e.g. rank 117909 of 136107 -> outranks 13.4% -> 13.4. None if missing.
@@ -181,7 +178,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         beaten = team.globalTeamCount - team.globalRank
         return round(100 * beaten / team.globalTeamCount, 1)
 
-    def _tier_band(self) -> Optional[tuple[int, int, int]]:
+    def _tier_band(self) -> tuple[int, int, int] | None:
         """(tier_index, lo, hi) MMR band for the player's current 1v1 league.
 
         tier_index 0 = highest band in the league. None when data is missing
@@ -194,9 +191,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         region = self.player_stats.members.character.region
         try:
             season = sc2pulse.current_season()
-            thresholds = sc2pulse.tier_thresholds(
-                "LOTV_1V1", "ARRANGED", season, region
-            )
+            thresholds = sc2pulse.tier_thresholds("LOTV_1V1", "ARRANGED", season, region)
         except sc2pulse.SC2PulseError:
             return None
 
@@ -208,7 +203,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return None
 
     @property
-    def tier_label(self) -> Optional[str]:
+    def tier_label(self) -> str | None:
         """Exact league + tier, e.g. 'Diamond 1' (1 = top tier of the league)."""
         league = self.current_league
         if not league:
@@ -219,7 +214,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return f"{league.title()} {band[0] + 1}"
 
     @property
-    def mmr_to_promotion(self) -> Optional[int]:
+    def mmr_to_promotion(self) -> int | None:
         """MMR needed to reach the next tier up (top of the current band)."""
         band = self._tier_band()
         if band is None or self.current_mmr is None:
@@ -227,7 +222,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return max(band[2] - self.current_mmr, 0)
 
     @property
-    def live_stream(self) -> Optional[dict]:
+    def live_stream(self) -> dict | None:
         """The player's currently-live stream record, or None.
 
         Only revealed pros/streamers (those with a proId) are checked, so
@@ -247,7 +242,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return None
 
     @property
-    def live_stream_label(self) -> Optional[str]:
+    def live_stream_label(self) -> str | None:
         stream = self.live_stream
         if not stream:
             return None
@@ -256,7 +251,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return f"🔴 LIVE{v}"
 
     @property
-    def clan_info(self) -> Optional[str]:
+    def clan_info(self) -> str | None:
         """Clan tag + average rating, e.g. '[BASKGG] avg 5950'."""
         clan = self.player_stats.members.clan
         if not clan or not clan.get("tag"):
@@ -266,9 +261,9 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return f"[{clan['tag']}]{avg_str}"
 
     @property
-    def context_line(self) -> Optional[str]:
+    def context_line(self) -> str | None:
         """One-line digest of notable secondary signals (only what stands out)."""
-        parts: List[str] = []
+        parts: list[str] = []
         if self.live_stream_label:
             parts.append(self.live_stream_label)
         tier = self.tier_label
@@ -291,7 +286,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return "  ".join(parts) or None
 
     @property
-    def pro_identity(self) -> Optional[str]:
+    def pro_identity(self) -> str | None:
         """Revealed pro/streamer name + team, e.g. '👑 Serral [BSLSK]'."""
         m = self.player_stats.members
         if not m.proNickname:
@@ -300,7 +295,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return f"👑 {m.proNickname}{team}"
 
     @property
-    def pro_links(self) -> Dict[str, str]:
+    def pro_links(self) -> dict[str, str]:
         """External links for a revealed pro: {ALIGULAC, TWITCH, LIQUIPEDIA, ...}."""
         details = self.player_stats.pro_details()
         if not details:
@@ -312,31 +307,31 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         }
 
     @property
-    def pro_twitch(self) -> Optional[str]:
+    def pro_twitch(self) -> str | None:
         """Twitch URL for a revealed pro (lazy fetch; pros only)."""
         return self.pro_links.get("TWITCH")
 
     @property
-    def pro_country(self) -> Optional[str]:
+    def pro_country(self) -> str | None:
         details = self.player_stats.pro_details()
         return (details.get("proPlayer") or {}).get("country") if details else None
 
     @property
-    def pro_earnings(self) -> Optional[int]:
+    def pro_earnings(self) -> int | None:
         details = self.player_stats.pro_details()
         return (details.get("proPlayer") or {}).get("earnings") if details else None
 
     @property
-    def pro_real_name(self) -> Optional[str]:
+    def pro_real_name(self) -> str | None:
         details = self.player_stats.pro_details()
         return (details.get("proPlayer") or {}).get("name") if details else None
 
     @property
-    def pro_bio(self) -> Optional[str]:
+    def pro_bio(self) -> str | None:
         """Compact pro bio line: country, real name, earnings."""
         if not self.player_stats.is_pro:
             return None
-        parts: List[str] = []
+        parts: list[str] = []
         if self.pro_country:
             parts.append(self.pro_country)
         if self.pro_real_name:
@@ -346,20 +341,20 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return " · ".join(parts) or None
 
     @property
-    def recent_matches(self) -> List[RecentMatch]:
+    def recent_matches(self) -> list[RecentMatch]:
         """Recent ranked-ladder matches (CUSTOM / co-op excluded)."""
         return ladder_only(self.player_stats.recent_matches())
 
     @property
-    def map_records(self) -> Dict[str, tuple[int, int]]:
+    def map_records(self) -> dict[str, tuple[int, int]]:
         return map_records(self.recent_matches)
 
     @property
-    def avg_game_duration(self) -> Optional[int]:
+    def avg_game_duration(self) -> int | None:
         return avg_duration_seconds(self.recent_matches)
 
     @property
-    def real_record(self) -> Optional[str]:
+    def real_record(self) -> str | None:
         """Win/loss from real match history (more exact than MMR-delta inference).
 
         Returns None when SC2Pulse has no tracked matches for this player.
@@ -372,15 +367,13 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return f"{wins}W/{losses}L (last {len(matches)})"
 
     @property
-    def map_summary(self) -> Optional[str]:
+    def map_summary(self) -> str | None:
         """Compact per-map record string, e.g. 'Goldenaura 3-1 · Site 2-0'."""
         records = self.map_records
         if not records:
             return None
         ordered = sorted(records.items(), key=lambda kv: -(kv[1][0] + kv[1][1]))
-        return " · ".join(
-            f"{name} {wins}-{losses}" for name, (wins, losses) in ordered[:3]
-        )
+        return " · ".join(f"{name} {wins}-{losses}" for name, (wins, losses) in ordered[:3])
 
     @property
     def most_played_race(self) -> str:
@@ -390,7 +383,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         key = max(races, key=lambda r: races.get(r, 0))
         return RaceCode[key].name
 
-    def _smurf_assessment(self) -> tuple[int, List[str]]:
+    def _smurf_assessment(self) -> tuple[int, list[str]]:
         """Graded smurf likelihood (0-100) with human-readable reasons.
 
         Blends recent/lifetime winrate with account age and MMR climb velocity.
@@ -401,7 +394,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
             return 0, []
 
         score = 0
-        reasons: List[str] = []
+        reasons: list[str] = []
 
         w3, l3 = h.wins_last_3_days, h.losses_last_3_days
         if (w3 + l3) >= 5 and (w3 / (w3 + l3)) >= 0.80:
@@ -443,11 +436,11 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return self._smurf_assessment()[0]
 
     @property
-    def smurf_reasons(self) -> List[str]:
+    def smurf_reasons(self) -> list[str]:
         return self._smurf_assessment()[1]
 
     @property
-    def smurf_warning(self) -> Optional[str]:
+    def smurf_warning(self) -> str | None:
         score, reasons = self._smurf_assessment()
         if score >= 70:
             label = "⚠️ Likely Smurf"
@@ -462,7 +455,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
         return f"{label} ({score}/100){detail}"
 
     @property
-    def teammates(self) -> Dict[str, Dict[str, Optional[datetime]]]:
+    def teammates(self) -> dict[str, dict[str, datetime | None]]:
         result = {}
         my_name = self.name
         if not self.match_history:
@@ -506,9 +499,7 @@ class PlayerAnalysis(BaseAnalysis, BaseModel):
 
         return {
             "Player": self.name,
-            "Playing For": (
-                f"{human_friendly_duration(first)} ({first})" if first else "unknown"
-            ),
+            "Playing For": (f"{human_friendly_duration(first)} ({first})" if first else "unknown"),
             "Most Recent Game": self.last_game_played,
             "Max League": self.max_league,
             "Current MMR": self.current_mmr,
