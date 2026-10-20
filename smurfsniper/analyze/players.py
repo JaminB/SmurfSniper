@@ -7,7 +7,7 @@ from pydantic import BaseModel, PrivateAttr
 from PySide6.QtCore import QTimer
 
 from smurfsniper.analyze import BaseAnalysis
-from smurfsniper.api import sc2pulse
+from smurfsniper.api import legacy_sc2pulse as sc2pulse
 from smurfsniper.enums import League, RaceCode, TeamFormat
 from smurfsniper.models.match import (
     RecentMatch,

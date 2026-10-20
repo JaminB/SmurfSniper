@@ -17,7 +17,7 @@ import re
 
 import httpx
 
-from smurfsniper.api import sc2pulse
+from smurfsniper.api import legacy_sc2pulse as sc2pulse
 from smurfsniper.enums import Region
 from smurfsniper.logger import logger
 

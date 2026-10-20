@@ -12,8 +12,9 @@ from smurfsniper.analyze.external_intel import ExternalIntel
 from smurfsniper.analyze.player_logs import PlayerLogAnalysis
 from smurfsniper.analyze.players import Player2v2Analysis, PlayerAnalysis
 from smurfsniper.analyze.teams import NoTeamFound, TeamAnalysis
-from smurfsniper.api import cross_network, sc2pulse
-from smurfsniper.api.sc2pulse import SC2PulseError
+from smurfsniper.api import cross_network
+from smurfsniper.api import legacy_sc2pulse as sc2pulse
+from smurfsniper.api.legacy_sc2pulse import SC2PulseError
 from smurfsniper.enums import TeamFormat
 from smurfsniper.logger import logger
 from smurfsniper.models.config import Config, OverlayPreferences

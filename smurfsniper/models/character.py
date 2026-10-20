@@ -1,6 +1,6 @@
 from pydantic import BaseModel, PrivateAttr
 
-from smurfsniper.api import sc2pulse
+from smurfsniper.api import legacy_sc2pulse as sc2pulse
 from smurfsniper.models.team import Team
 
 

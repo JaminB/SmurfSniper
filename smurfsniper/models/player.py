@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ValidationError
 
-from smurfsniper.api import sc2pulse
+from smurfsniper.api import legacy_sc2pulse as sc2pulse
 from smurfsniper.enums import League, RaceCode, Region, TeamFormat, TeamType
 from smurfsniper.logger import logger
 from smurfsniper.models.character import Character

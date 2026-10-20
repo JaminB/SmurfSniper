@@ -1,0 +1,472 @@
+{
+ "result": [
+  {
+   "match": {
+    "date": "2026-10-13T20:17:33Z",
+    "type": "_1V1",
+    "id": 635941110,
+    "mapId": 55372,
+    "region": "EU",
+    "updated": "2026-10-18T18:14:24.590289Z",
+    "duration": 116
+   },
+   "map": {
+    "id": 55372,
+    "name": "Rainfall LE"
+   },
+   "participants": [
+    {
+     "participant": {
+      "matchId": 635941110,
+      "playerCharacterId": 341427506,
+      "teamId": 275396398,
+      "teamStateDateTime": "2026-10-13T20:18:47.21424Z",
+      "decision": "WIN",
+      "ratingChange": null
+     },
+     "team": {
+      "rating": 7023,
+      "wins": 22,
+      "losses": 10,
+      "ties": 0,
+      "id": 275396398,
+      "legacyId": "1.11355642.3",
+      "divisionId": 2845740,
+      "season": 68,
+      "region": "EU",
+      "league": {
+       "type": 5,
+       "queueType": 201,
+       "teamType": 0
+      },
+      "tierType": 0,
+      "globalRank": 5,
+      "regionRank": 5,
+      "leagueRank": 3,
+      "lastPlayed": "2026-10-13T20:17:33Z",
+      "joined": "2026-10-12T17:36:28Z",
+      "primaryDataUpdated": "2026-10-13T20:22:49.635197Z",
+      "members": [
+       {
+        "zergGamesPlayed": 32,
+        "character": {
+         "realm": 1,
+         "name": "\u0413\u043e\u043b\u043e\u0432\u0430\u0447\u041b\u0435\u043d\u0430#430",
+         "id": 341427506,
+         "accountId": 321489851,
+         "region": "EU",
+         "battlenetId": 11355642,
+         "tag": "\u0413\u043e\u043b\u043e\u0432\u0430\u0447\u041b\u0435\u043d\u0430",
+         "discriminator": 430
+        },
+        "account": {
+         "battleTag": "\u0410\u0411\u041e\u0411\u0423\u0421#2721",
+         "id": 321489851,
+         "partition": "GLOBAL",
+         "hidden": null,
+         "tag": "\u0410\u0411\u041e\u0411\u0423\u0421",
+         "discriminator": 2721
+        },
+        "clan": {
+         "tag": "MINDEL",
+         "id": 127866,
+         "region": "EU",
+         "name": "\u041e\u0444\u0438\u0446\u0438\u0430\u043b\u044c\u043d\u044b\u0439 \u041c\u0438\u043d\u0434\u0435\u043b\u044c\u0412\u041a \u043a\u043b\u0430\u043d",
+         "members": null,
+         "activeMembers": null,
+         "avgRating": null,
+         "avgLeagueType": null,
+         "games": null
+        },
+        "raceGames": {
+         "ZERG": 32
+        }
+       }
+      ],
+      "globalTeamCount": 125915,
+      "regionTeamCount": 51761,
+      "leagueTeamCount": 9063,
+      "queueType": 201,
+      "teamType": 0,
+      "leagueType": 5,
+      "legacyUid": "201-0-2-1.11355642.3"
+     },
+     "teamState": {
+      "teamState": {
+       "teamId": 275396398,
+       "dateTime": "2026-10-13T20:18:47.21424Z",
+       "divisionId": null,
+       "wins": 21,
+       "games": 31,
+       "rating": 7020,
+       "globalRank": 3,
+       "regionRank": 3,
+       "leagueRank": 2,
+       "secondary": null
+      },
+      "race": null,
+      "league": {
+       "type": 5,
+       "queueType": 201,
+       "teamType": 0,
+       "id": null,
+       "seasonId": null
+      },
+      "tier": 0,
+      "season": 68,
+      "globalTeamCount": 125915,
+      "regionTeamCount": 51761,
+      "leagueTeamCount": 9063
+     },
+     "twitchVodUrl": null,
+     "subOnlyTwitchVod": null
+    },
+    {
+     "participant": {
+      "matchId": 635941110,
+      "playerCharacterId": 341426280,
+      "teamId": 275384569,
+      "teamStateDateTime": "2026-10-13T20:22:49.524361Z",
+      "decision": "LOSS",
+      "ratingChange": -21
+     },
+     "team": {
+      "rating": 2563,
+      "wins": 94,
+      "losses": 91,
+      "ties": 0,
+      "id": 275384569,
+      "legacyId": "1.4349232.1",
+      "divisionId": 2846679,
+      "season": 68,
+      "region": "EU",
+      "league": {
+       "type": 2,
+       "queueType": 201,
+       "teamType": 0
+      },
+      "tierType": 0,
+      "globalRank": 75380,
+      "regionRank": 31476,
+      "leagueRank": 3365,
+      "lastPlayed": "2026-10-19T20:42:42Z",
+      "joined": "2026-10-19T20:42:42Z",
+      "primaryDataUpdated": "2026-10-19T20:45:23.89903Z",
+      "members": [
+       {
+        "terranGamesPlayed": 185,
+        "character": {
+         "realm": 1,
+         "name": "Ok\u0142ok#981",
+         "id": 341426280,
+         "accountId": 321488757,
+         "region": "EU",
+         "battlenetId": 4349232,
+         "tag": "Ok\u0142ok",
+         "discriminator": 981
+        },
+        "account": {
+         "battleTag": "Oklok#2557",
+         "id": 321488757,
+         "partition": "GLOBAL",
+         "hidden": null,
+         "tag": "Oklok",
+         "discriminator": 2557
+        },
+        "raceGames": {
+         "TERRAN": 185
+        }
+       }
+      ],
+      "globalTeamCount": 125916,
+      "regionTeamCount": 51762,
+      "leagueTeamCount": 8856,
+      "queueType": 201,
+      "teamType": 0,
+      "leagueType": 2,
+      "legacyUid": "201-0-2-1.4349232.1"
+     },
+     "teamState": {
+      "teamState": {
+       "teamId": 275384569,
+       "dateTime": "2026-10-13T20:22:49.524361Z",
+       "divisionId": null,
+       "wins": 38,
+       "games": 82,
+       "rating": 2378,
+       "globalRank": 85913,
+       "regionRank": 35710,
+       "leagueRank": 6555,
+       "secondary": null
+      },
+      "race": null,
+      "league": {
+       "type": 2,
+       "queueType": 201,
+       "teamType": 0,
+       "id": null,
+       "seasonId": null
+      },
+      "tier": 0,
+      "season": 68,
+      "globalTeamCount": 125916,
+      "regionTeamCount": 51762,
+      "leagueTeamCount": 8856
+     },
+     "twitchVodUrl": null,
+     "subOnlyTwitchVod": null
+    },
+    {
+     "participant": {
+      "matchId": 635941110,
+      "playerCharacterId": 341153451,
+      "teamId": 275241948,
+      "teamStateDateTime": "2026-10-13T20:22:49.432053Z",
+      "decision": "WIN",
+      "ratingChange": null
+     },
+     "team": {
+      "rating": 2426,
+      "wins": 111,
+      "losses": 105,
+      "ties": 0,
+      "id": 275241948,
+      "legacyId": "1.10629665.1",
+      "divisionId": 2844643,
+      "season": 68,
+      "region": "EU",
+      "league": {
+       "type": 2,
+       "queueType": 201,
+       "teamType": 0
+      },
+      "tierType": 2,
+      "globalRank": 85859,
+      "regionRank": 35768,
+      "leagueRank": 5876,
+      "lastPlayed": "2026-10-13T20:17:33Z",
+      "joined": "2026-07-31T15:59:12Z",
+      "primaryDataUpdated": "2026-10-13T20:22:49.432053Z",
+      "members": [
+       {
+        "terranGamesPlayed": 216,
+        "character": {
+         "realm": 1,
+         "name": "Rubik#908",
+         "id": 341153451,
+         "accountId": 321238682,
+         "region": "EU",
+         "battlenetId": 10629665,
+         "tag": "Rubik",
+         "discriminator": 908
+        },
+        "account": {
+         "battleTag": "SCGamer#21955",
+         "id": 321238682,
+         "partition": "GLOBAL",
+         "hidden": null,
+         "tag": "SCGamer",
+         "discriminator": 21955
+        },
+        "raceGames": {
+         "TERRAN": 216
+        }
+       }
+      ],
+      "globalTeamCount": 125916,
+      "regionTeamCount": 51762,
+      "leagueTeamCount": 8856,
+      "queueType": 201,
+      "teamType": 0,
+      "leagueType": 2,
+      "legacyUid": "201-0-2-1.10629665.1"
+     },
+     "teamState": {
+      "teamState": {
+       "teamId": 275241948,
+       "dateTime": "2026-10-13T20:22:49.432053Z",
+       "divisionId": null,
+       "wins": 111,
+       "games": 216,
+       "rating": 2426,
+       "globalRank": 82304,
+       "regionRank": 34186,
+       "leagueRank": 5667,
+       "secondary": null
+      },
+      "race": null,
+      "league": {
+       "type": 2,
+       "queueType": 201,
+       "teamType": 0,
+       "id": null,
+       "seasonId": null
+      },
+      "tier": 2,
+      "season": 68,
+      "globalTeamCount": 125916,
+      "regionTeamCount": 51762,
+      "leagueTeamCount": 8856
+     },
+     "twitchVodUrl": null,
+     "subOnlyTwitchVod": null
+    },
+    {
+     "participant": {
+      "matchId": 635941110,
+      "playerCharacterId": 174570,
+      "teamId": null,
+      "teamStateDateTime": null,
+      "decision": "LOSS",
+      "ratingChange": null
+     },
+     "team": null,
+     "teamState": null,
+     "twitchVodUrl": null,
+     "subOnlyTwitchVod": null
+    }
+   ]
+  },
+  {
+   "match": {
+    "date": "2026-10-13T20:14:54Z",
+    "type": "_1V1",
+    "id": 635943540,
+    "mapId": 55373,
+    "region": "EU",
+    "updated": "2026-10-14T14:28:23.377372Z",
+    "duration": 337
+   },
+   "map": {
+    "id": 55373,
+    "name": "Blackrock LE"
+   },
+   "participants": [
+    {
+     "participant": {
+      "matchId": 635943540,
+      "playerCharacterId": 341427506,
+      "teamId": 275396398,
+      "teamStateDateTime": "2026-10-13T20:18:47.21424Z",
+      "decision": "WIN",
+      "ratingChange": null
+     },
+     "team": {
+      "rating": 7023,
+      "wins": 22,
+      "losses": 10,
+      "ties": 0,
+      "id": 275396398,
+      "legacyId": "1.11355642.3",
+      "divisionId": 2845740,
+      "season": 68,
+      "region": "EU",
+      "league": {
+       "type": 5,
+       "queueType": 201,
+       "teamType": 0
+      },
+      "tierType": 0,
+      "globalRank": 5,
+      "regionRank": 5,
+      "leagueRank": 3,
+      "lastPlayed": "2026-10-13T20:17:33Z",
+      "joined": "2026-10-12T17:36:28Z",
+      "primaryDataUpdated": "2026-10-13T20:22:49.635197Z",
+      "members": [
+       {
+        "zergGamesPlayed": 32,
+        "character": {
+         "realm": 1,
+         "name": "\u0413\u043e\u043b\u043e\u0432\u0430\u0447\u041b\u0435\u043d\u0430#430",
+         "id": 341427506,
+         "accountId": 321489851,
+         "region": "EU",
+         "battlenetId": 11355642,
+         "tag": "\u0413\u043e\u043b\u043e\u0432\u0430\u0447\u041b\u0435\u043d\u0430",
+         "discriminator": 430
+        },
+        "account": {
+         "battleTag": "\u0410\u0411\u041e\u0411\u0423\u0421#2721",
+         "id": 321489851,
+         "partition": "GLOBAL",
+         "hidden": null,
+         "tag": "\u0410\u0411\u041e\u0411\u0423\u0421",
+         "discriminator": 2721
+        },
+        "clan": {
+         "tag": "MINDEL",
+         "id": 127866,
+         "region": "EU",
+         "name": "\u041e\u0444\u0438\u0446\u0438\u0430\u043b\u044c\u043d\u044b\u0439 \u041c\u0438\u043d\u0434\u0435\u043b\u044c\u0412\u041a \u043a\u043b\u0430\u043d",
+         "members": null,
+         "activeMembers": null,
+         "avgRating": null,
+         "avgLeagueType": null,
+         "games": null
+        },
+        "raceGames": {
+         "ZERG": 32
+        }
+       }
+      ],
+      "globalTeamCount": 125915,
+      "regionTeamCount": 51761,
+      "leagueTeamCount": 9063,
+      "queueType": 201,
+      "teamType": 0,
+      "leagueType": 5,
+      "legacyUid": "201-0-2-1.11355642.3"
+     },
+     "teamState": {
+      "teamState": {
+       "teamId": 275396398,
+       "dateTime": "2026-10-13T20:18:47.21424Z",
+       "divisionId": null,
+       "wins": 21,
+       "games": 31,
+       "rating": 7020,
+       "globalRank": 3,
+       "regionRank": 3,
+       "leagueRank": 2,
+       "secondary": null
+      },
+      "race": null,
+      "league": {
+       "type": 5,
+       "queueType": 201,
+       "teamType": 0,
+       "id": null,
+       "seasonId": null
+      },
+      "tier": 0,
+      "season": 68,
+      "globalTeamCount": 125915,
+      "regionTeamCount": 51761,
+      "leagueTeamCount": 9063
+     },
+     "twitchVodUrl": null,
+     "subOnlyTwitchVod": null
+    },
+    {
+     "participant": {
+      "matchId": 635943540,
+      "playerCharacterId": 174570,
+      "teamId": null,
+      "teamStateDateTime": null,
+      "decision": "LOSS",
+      "ratingChange": null
+     },
+     "team": null,
+     "teamState": null,
+     "twitchVodUrl": null,
+     "subOnlyTwitchVod": null
+    }
+   ]
+  }
+ ],
+ "navigation": {
+  "before": null,
+  "after": "eyJ2IjoxLCJhIjpbIjIwMjYtMTAtMTNUMjA6MDM6NDBaIiwxLDU1MzczLDJdfQ"
+ }
+}
