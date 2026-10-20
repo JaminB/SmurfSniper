@@ -210,6 +210,7 @@ class OverlayWindow(QWidget):
         self._dismissing = False
         self._anim: QAbstractAnimation | None = None
         self._geo_anim: QPropertyAnimation | None = None
+        self._then: Callable[[], None] | None = None
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
@@ -345,24 +346,26 @@ class OverlayWindow(QWidget):
                 then()
             return
         self._dismissing = True
+        self._then = then
         dur, curve = t.ANIM["fade_out"]
         fade = QPropertyAnimation(self, b"windowOpacity", self)
         fade.setDuration(dur)
         fade.setEasingCurve(easing(curve))
         fade.setStartValue(self.windowOpacity())
         fade.setEndValue(START_OPACITY)
-
-        def done() -> None:
-            if self._dismissing:
-                self._dismissing = False
-                self.hide()
-                self.setWindowOpacity(1.0)
-                if then is not None:
-                    then()
-
-        fade.finished.connect(done)
+        fade.finished.connect(self._fade_out_done)  # bound method: no reference cycle
         self._anim = fade
         fade.start()
+
+    def _fade_out_done(self) -> None:
+        if not self._dismissing:
+            return
+        self._dismissing = False
+        self.hide()
+        self.setWindowOpacity(1.0)
+        then, self._then = self._then, None
+        if then is not None:
+            then()
 
     def hide_now(self) -> None:
         self._stop_anim()

@@ -158,6 +158,16 @@ class OpponentSection(QWidget):
     def score(self) -> int:
         return self.smurf.assessment.score if self.smurf else 0
 
+    def slot_order(self) -> list[str]:
+        """Row slots in on-screen (layout) order."""
+        by_widget = {id(w): k for k, w in self.rows.items()}
+        out = []
+        for i in range(self.lay.count()):
+            w = self.lay.itemAt(i).widget()
+            if w is not None and id(w) in by_widget:
+                out.append(by_widget[id(w)])
+        return out
+
     def visible_rows(self) -> list[Row]:
         return [self.rows[s] for s in SLOTS if s in self.rows]
 

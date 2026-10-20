@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from PySide6.QtCore import QPropertyAnimation, Qt, QTimer
+from PySide6.QtCore import QPropertyAnimation, Qt, QTimer, Signal
 from PySide6.QtWidgets import QGraphicsOpacityEffect, QHBoxLayout, QVBoxLayout, QWidget
 
 from smurfsniper.models.config import Anchor, Placement
@@ -39,6 +39,9 @@ class ToastSpec:
 class Toast(Surface):
     """One toast card: title line (+ chip) and an optional 3-line body."""
 
+    expired = Signal(object)  # self, when its timer runs out
+    faded_out = Signal(object)  # self, when its fade-out finished
+
     def __init__(self, spec: ToastSpec, tokens: TokenContext, parent: QWidget | None = None):
         super().__init__(
             tokens, radius="toast", accent=qcolor(spec.accent or KIND_ACCENT[spec.kind])
@@ -46,6 +49,7 @@ class Toast(Surface):
         self.spec = spec
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self._expire)
         self.leaving = False
         self.lay = QVBoxLayout(self)
         self.setFixedWidth(tokens.px(t.SIZE["toast_w"]))
@@ -53,16 +57,6 @@ class Toast(Surface):
 
     def _build(self) -> None:
         tk = self.tokens
-        while self.lay.count():
-            item = self.lay.takeAt(0)
-            if item.widget() is not None:
-                item.widget().deleteLater()
-            elif item.layout() is not None:
-                lay = item.layout()
-                while lay.count():
-                    sub = lay.takeAt(0)
-                    if sub.widget() is not None:
-                        sub.widget().deleteLater()
         v, h = (tk.px(x) for x in t.PADDING["toast"])
         bar = tk.px(t.ACCENT_BAR_WIDTH)
         self.lay.setContentsMargins(h + bar, v, h, v)
@@ -84,10 +78,15 @@ class Toast(Surface):
             self.body = text
             self.lay.addWidget(text)
 
-    def update_spec(self, spec: ToastSpec) -> None:
-        self.spec = spec
-        self.set_accent(qcolor(spec.accent or KIND_ACCENT[spec.kind]))
-        self._build()
+    def _expire(self) -> None:
+        self.expired.emit(self)
+
+    def _faded(self) -> None:
+        self.faded_out.emit(self)
+
+    def _faded_in(self) -> None:
+        if not self.leaving:
+            self.restore_shadow()
 
     def texts(self) -> list[str]:
         out = [self.title.text()]
@@ -122,13 +121,22 @@ class ToastStack(OverlayWindow):
     def push(self, spec: ToastSpec) -> Toast:
         """Show ``spec``; the newest toast sits at the anchor edge."""
         existing = next((x for x in self.toasts if spec.id and x.spec.id == spec.id), None)
-        if existing is not None and not existing.leaving:
-            existing.update_spec(spec)
-            self._arm(existing)
-            self._relayout()
-            return existing
         toast = Toast(spec, self.tokens)
-        toast.timer.timeout.connect(lambda x=toast: self.dismiss_toast(x))
+        # A bound-method connection (no lambda capturing ``self``) avoids a Python
+        # reference cycle that crashes when a stack is garbage-collected.
+        toast.expired.connect(self.dismiss_toast)
+        toast.faded_out.connect(self._remove)
+        if existing is not None and not existing.leaving:
+            # Same id: replace in place (new text, fresh timer), no re-entry animation.
+            idx = self.toasts.index(existing)
+            existing.timer.stop()
+            self.body.insertWidget(self.body.indexOf(existing), toast)
+            self.body.removeWidget(existing)
+            existing.deleteLater()
+            self.toasts[idx] = toast
+            self._arm(toast)
+            self._relayout()
+            return toast
         if self._newest_first():
             self.toasts.insert(0, toast)
             self.body.insertWidget(0, toast)
@@ -156,7 +164,7 @@ class ToastStack(OverlayWindow):
         toast.timer.stop()
         if animations_enabled() and self.isVisible():
             anim = self._fade(toast, 1.0, 0.0, t.ANIM["fade_out"])
-            anim.finished.connect(lambda: self._remove(toast))
+            anim.finished.connect(toast._faded)
         else:
             self._remove(toast)
 
@@ -220,6 +228,6 @@ class ToastStack(OverlayWindow):
         anim.setStartValue(start)
         anim.setEndValue(end)
         if end >= 1.0:
-            anim.finished.connect(lambda: toast.leaving or toast.restore_shadow())
+            anim.finished.connect(toast._faded_in)
         anim.start()
         return anim
