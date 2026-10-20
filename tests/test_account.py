@@ -105,6 +105,67 @@ def test_redetect_does_not_double_count(svc):
     assert svc.identify_me(g) is None  # still only one game of evidence
 
 
+def test_two_of_three_ignores_teammates(svc, qtbot):
+    svc.config.account.teammates = ["Mate"]
+    games = [[human(1, "Hero"), human(2, "Mate"), human(3, x), human(4, x + "2")] for x in "ABC"]
+    svc.observe_game(ctx_for(games[0]))
+    svc._game_open = False
+    svc.observe_game(ctx_for(games[1]))
+    svc._game_open = False
+    asked: list = []
+    svc.needs_picker.connect(asked.append)
+    me = svc.identify_me(games[2])
+    assert me is not None and me.name == "Hero" and not asked
+
+
+def test_known_name_without_character_searches_once(svc, qtbot):
+    svc.config.account.name = "Hero"
+    g = [human(1, "Hero"), human(2, "Foe")]
+    assert svc.identify_me(g).name == "Hero"
+    assert svc.identify_me(g).name == "Hero"
+    qtbot.waitUntil(lambda: bool(svc._executor.jobs), timeout=2000)
+    qtbot.wait(20)
+    assert svc._executor.jobs == [("_search_job", ("Hero", True))]
+
+
+def _cand(name: str, hours: int | None) -> AccountCandidate:
+    from datetime import timedelta
+
+    from smurfsniper.api.sc2pulse.models import Character
+
+    ch = Character(
+        id=abs(hash(name)) % 10_000,
+        account_id=1,
+        region="EU",
+        realm=1,
+        battlenet_id=1,
+        name=name,
+        discriminator=1,
+    )
+    last = NOW - timedelta(hours=hours) if hours is not None else None
+    return AccountCandidate(ch, "EU", 4000, 4, 50, last, None, 1, "ZERG")
+
+
+def test_auto_choose_picks_the_only_recently_active_candidate(svc, qtbot, monkeypatch):
+    active, dormant = _cand("Hero#1", 5), _cand("Hero#2", 24 * 90)
+    monkeypatch.setattr(svc, "_candidates", lambda q: [active, dormant])
+    chosen: list = []
+    svc._auto_choose.disconnect()
+    svc._auto_choose.connect(chosen.append)
+    svc._search_job("Hero", True)
+    assert chosen == [active]
+
+
+def test_auto_choose_asks_when_several_are_active(svc, qtbot, monkeypatch):
+    monkeypatch.setattr(svc, "_candidates", lambda q: [_cand("Hero#1", 5), _cand("Hero#2", 9)])
+    asked: list = []
+    svc.needs_picker.connect(asked.append)
+    svc._auto_choose.disconnect()
+    svc._auto_choose.connect(lambda c: pytest.fail("must not auto-choose"))
+    svc._search_job("Hero", True)
+    assert asked == [["Hero"]]
+
+
 def test_unknown_me_shows_everyone_but_teammates_as_opponents():
     players = [human(1, "Me"), human(2, "Mate"), human(3, "X"), human(4, "Y")]
     allies, opponents = split_teams(players, None, {"mate"})

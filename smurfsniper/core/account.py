@@ -86,6 +86,7 @@ class AccountService(QObject):
     needs_picker = Signal(list)  # list[str] names seen (ambiguous auto-detect)
 
     _detected = Signal(str)
+    _resolve = Signal(str)
     _auto_choose = Signal(object)
     _mmr_found = Signal(int, int)
 
@@ -112,7 +113,9 @@ class AccountService(QObject):
         self._timers: list[threading.Timer] = []
         self._generation = 0
         self._stopped = False
+        self._resolve_tried = False
         self._detected.connect(self._on_detected)
+        self._resolve.connect(self._on_resolve)
         self._auto_choose.connect(self.choose)
         self._mmr_found.connect(self._on_mmr_found)
 
@@ -122,7 +125,13 @@ class AccountService(QObject):
         acct = self.config.account
         if acct.name:
             want = _base(acct.name)
-            return next((p for p in humans if _base(p.name) == want), None)
+            me = next((p for p in humans if _base(p.name) == want), None)
+            if me is not None and acct.character_id is None and acct.auto_detect:
+                with self._lock:
+                    first, self._resolve_tried = not self._resolve_tried, True
+                if first:  # known name, unknown character (e.g. migrated v1 config)
+                    self._resolve.emit(acct.name)
+            return me
         if len(humans) == 1:
             me = humans[0]
             if acct.auto_detect:
@@ -130,6 +139,7 @@ class AccountService(QObject):
             return me
         if not acct.auto_detect:
             return None
+        mates = {_base(m) for m in acct.teammates}
         current = frozenset(_base(p.name) for p in humans)
         with self._lock:
             games = list(self._history)
@@ -140,7 +150,7 @@ class AccountService(QObject):
         for names in recent:
             for n in names:
                 counts[n] = counts.get(n, 0) + 1
-        mine = sorted(n for n, c in counts.items() if c >= 2 and n in current)
+        mine = sorted(n for n, c in counts.items() if c >= 2 and n in current and n not in mates)
         if len(mine) == 1:
             me = next(p for p in humans if _base(p.name) == mine[0])
             self._detected.emit(me.name)
@@ -178,6 +188,13 @@ class AccountService(QObject):
         if acct.character_id is None:
             self.search(acct.name, auto=True)
 
+    @Slot(str)
+    def _on_resolve(self, name: str) -> None:
+        acct = self.config.account
+        if acct.character_id is None and acct.auto_detect:
+            logger.info(f"Looking up the SC2Pulse account for {name}")
+            self.search(name, auto=True)
+
     # ---------------------------------------------------------------- search
     def search(self, name: str, *, auto: bool = False) -> None:
         """Look ``name`` up on SC2Pulse; results arrive on ``candidates_ready``."""
@@ -206,8 +223,12 @@ class AccountService(QObject):
         if not auto:
             return
         cutoff = self._now() - timedelta(days=AUTO_CHOOSE_DAYS)
-        if len(cands) == 1 and cands[0].last_played and cands[0].last_played >= cutoff:
-            self._auto_choose.emit(cands[0])
+        recent = [c for c in cands if c.last_played and c.last_played >= cutoff]
+        # Candidates past MAX_DETAIL_LOOKUPS have no last_played, so the recency
+        # filter is only trusted when every candidate was looked up in detail.
+        pool = recent if len(cands) <= MAX_DETAIL_LOOKUPS else cands
+        if len(pool) == 1 and pool[0] in recent:
+            self._auto_choose.emit(pool[0])
         elif cands:
             self.needs_picker.emit([query])
 
