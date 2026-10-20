@@ -56,7 +56,7 @@ time you queue into them you see your head-to-head history at a glance.
   head-to-head and tendencies arrive.
 - Responses are cached in memory and on disk (SQLite) with per-endpoint lifetimes, so a
   rematch or a hotkey never re-downloads what was already fetched. A cold 1v1 lookup costs at
-  most 7 SC2Pulse requests; a warm one costs none.
+  most 8 SC2Pulse requests (including the account's other characters); a warm one costs none.
 
 ### MMR & form analysis
 - **MMR trend** via linear regression (MMR per day) over the last **100 rating points**.
@@ -75,25 +75,49 @@ time you queue into them you see your head-to-head history at a glance.
   - lifetime win rate ≥ 70% with 30+ games → **+15**
   - new account ≤ 14d → **+30**, or ≤ 30d → **+18** (needs ≥ 5 games)
   - MMR climb ≥ 15/day → **+20**, or ≥ 8/day → **+10**
+  - **linked alt account** with a much higher peak (≥ 800 MMR above → **+35**, ≥ 400 → **+20**),
+    found through the Battle.net account SC2Pulse links the character to
+  - **league well below peak** (3+ leagues or 1,200+ MMR → **+25**; 2+ leagues or 700+ MMR →
+    **+15**)
+  - **off-racing**: playing a race that is under 20% of their games while their main race has
+    100+ games (**+20** if the main race peaked 300+ MMR higher, otherwise **+8**)
 - The graded model flags a brand-new, fast-climbing account **before** its win-rate window even
-  fills.
+  fills. The card shows the top two reasons, the intel panel all of them.
 
 ### Head-to-head history
 - Every opponent encounter is written to a local **SQLite** database.
 - On future runs, the opponent card shows your **record vs. that opponent** (e.g. `You 3-1 ·
-  2d ago`).
+  2d ago`), with a `rival` or `nemesis` tag once you have met them twice or more.
 - Each row stores the game mode, both races, game length and your own result, and a game is
   never logged twice. Older databases are migrated automatically.
 
 ### Scouting intel (Ctrl+Shift+2)
 On demand, show a deeper scouting profile on the current opponent(s), using official public
 APIs only:
-- **Recent form** (last 10 results), **top maps** with W-L records and **average game length**
-  from their SC2Pulse match history.
+- **Tendencies** from their last 100 SC2Pulse matches: recent form (last 10), results **vs
+  each race**, **top maps**, **average game length** (and how many wins end under 6 minutes, a
+  cheese signal), the hours they usually play and how often they play an off race. The card
+  shows one summary line: their win rate against your race, else game length.
+- **Every smurf reason**, not just the card's top two.
 - **Pro details** from SC2Pulse (team, country, earnings) and the links they have registered
   there (Liquipedia, Twitch, Aligulac, ...).
 - **Aligulac** rating and rank (needs a free API key) and the **Liquipedia** intro, looked up
   only for revealed pros or names distinctive enough to be worth it.
+
+### Session tracker, recap and rivals
+- **Session tracker** (Ctrl+Shift+3): record, MMR change and range, an MMR sparkline, streak,
+  time played and your results by matchup (`vZ 3-1 · vT 2-2 · vP 2-0`). A session ends after a
+  3 hour gap between games. It is saved locally, so it survives a restart.
+- **Post-game recap**: a toast right after each game (`Victory vs Bob (Zerg)`, game length,
+  session record and head-to-head). When SC2Pulse reports your new rating the same toast
+  updates with the MMR change (`+24 MMR (4,234)`).
+- **Rivals** (Ctrl+Shift+4): your nemesis, your favourite victim and the opponents you meet
+  most, read from the local log (no network).
+
+<p align="center">
+  <img src="img/previews/session.png" alt="Session tracker panel" width="380" />
+  <img src="img/previews/rivals.png" alt="Rivals panel" width="380" />
+</p>
 
 ### Tray app and Settings
 - SmurfSniper lives in the **system tray**: no console window, logs go to a file. Left-click
@@ -119,9 +143,17 @@ A compact, glass-style HUD that only takes space for information that exists:
   It fades out 45 s after its last update and its hotkey brings it back from cache.
 - **Toasts** (top right): small notices that fade on their own, e.g. a likely smurf when the
   card is hidden, or SC2Pulse being unreachable.
-- **Panels** on demand (scouting intel now; session and rivals later). Each panel's header
-  shows its hotkey as a chip, and the same hotkey closes it.
+- **Panels** on demand (scouting intel, session, rivals). Each panel's header shows its
+  hotkey as a chip, and the same hotkey closes it.
 - A **hotkey hint** pill at the start of a game lists the hotkeys (shortened after 5 games).
+
+<p align="center">
+  <img src="img/previews/hud.png" alt="Opponent card, toasts and hotkey hint on a game screen" />
+</p>
+<p align="center">
+  <img src="img/previews/intel.png" alt="Scouting intel panel" width="420" />
+</p>
+
 - Race-coloured accent bars, fade/slide animations, adjustable opacity and scale. Nothing
   shows in menus or replays except toasts and panels you ask for.
 
@@ -142,9 +174,9 @@ to dismiss it.
 | Default | Action |
 |---|---|
 | **Ctrl+Shift+1** | Opponent card (toggle; re-shows from cached data, no new requests) |
-| **Ctrl+Shift+2** | Scouting intel: form, maps, pro details, Aligulac, Liquipedia (toggle) |
-| **Ctrl+Shift+3** | Session tracker (coming in a later release) |
-| **Ctrl+Shift+4** | Rivals (coming in a later release) |
+| **Ctrl+Shift+2** | Scouting intel: tendencies, smurf reasons, pro details, Aligulac, Liquipedia (toggle) |
+| **Ctrl+Shift+3** | Session tracker: record, MMR change, streak, matchups (toggle) |
+| **Ctrl+Shift+4** | Rivals: nemesis, favourite victim, most-played opponents (toggle) |
 | **Ctrl+Shift+R** | Re-detect the current game |
 | **Ctrl+Shift+`** | Hide / show everything (resets on the next game) |
 

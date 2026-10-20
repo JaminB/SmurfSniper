@@ -20,7 +20,7 @@ logs/
 .idea/
 
 # Tooling / outputs
-previews/
+/previews/
 .pytest_cache/
 .ruff_cache/
 *.cdx.json
