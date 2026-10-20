@@ -9,17 +9,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from platformdirs import user_config_dir
-
-APP_NAME = "smurfsniper"
-APP_AUTHOR = "smurfsniper"
+from smurfsniper import paths
 
 # Prefer .yaml (the committed name); also accept the legacy .yml spelling.
 CONFIG_FILENAMES = ("config.yaml", "config.yml")
 
 
 def config_dir() -> Path:
-    return Path(user_config_dir(APP_NAME, APP_AUTHOR))
+    return paths.config_dir()
 
 
 def candidate_dirs() -> list[Path]:

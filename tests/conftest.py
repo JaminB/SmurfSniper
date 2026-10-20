@@ -26,12 +26,8 @@ def fixture_json() -> Callable[[str], Any]:
 
 @pytest.fixture
 def tmp_dirs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Path]:
-    """Point platformdirs user dirs at ``tmp_path``.
-
-    ``smurfsniper.paths`` does not exist yet (added with the API client layer); until
-    then this patches platformdirs directly so tests never touch real user dirs.
-    """
-    import platformdirs
+    """Point every ``smurfsniper.paths`` user dir at ``tmp_path``."""
+    from smurfsniper import paths
 
     dirs = {
         "config": tmp_path / "config",
@@ -39,8 +35,8 @@ def tmp_dirs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Path]
         "cache": tmp_path / "cache",
         "log": tmp_path / "log",
     }
-    monkeypatch.setattr(platformdirs, "user_config_dir", lambda *a, **k: str(dirs["config"]))
-    monkeypatch.setattr(platformdirs, "user_data_dir", lambda *a, **k: str(dirs["data"]))
-    monkeypatch.setattr(platformdirs, "user_cache_dir", lambda *a, **k: str(dirs["cache"]))
-    monkeypatch.setattr(platformdirs, "user_log_dir", lambda *a, **k: str(dirs["log"]))
+    monkeypatch.setattr(paths, "config_dir", lambda: dirs["config"])
+    monkeypatch.setattr(paths, "data_dir", lambda: dirs["data"])
+    monkeypatch.setattr(paths, "cache_dir", lambda: dirs["cache"])
+    monkeypatch.setattr(paths, "log_dir", lambda: dirs["log"])
     return dirs
