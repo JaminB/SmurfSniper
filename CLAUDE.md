@@ -55,6 +55,7 @@ Top level (`smurfsniper/`):
 - `service.py` — `GamePoller`, `main(url, config_file_path)`; the core loop.
 - `enums.py` — `Region`, `RaceCode`, `TeamFormat`, `League`, `TeamType`.
 - `logger.py` — loguru; colored stdout + rotating `logs/app.log` (10 MB, 14-day retention).
+- `_version.py` / `_modules.py` — version string (release-please managed) / static module list.
 - `utils.py` — `human_friendly_duration()`, `create_team_legacy_uid()`.
 - `sounds.py` — `one_tone_chime()`, `two_tone_chime()` (**Windows `winsound`**, Windows-only).
 
@@ -126,7 +127,16 @@ on service startup. Opponents are written on game end (skipped if already the mo
 - **Qt threading**: the QApplication event loop runs in a dedicated thread (`qt_thread.py`).
   Touch widgets only on the UI thread — schedule via `run_in_ui()` / `UiExecutor`.
 - **Windows-only audio** (`winsound`); chimes will not work on other platforms.
-- No test suite and no linter config currently — add tooling before relying on either.
+- Tooling: `pip install -e ".[dev]"`, then `ruff check .`, `ruff format --check .` and
+  `pytest` (Qt runs with `QT_QPA_PLATFORM=offscreen`; tests must not hit the live network, use
+  respx/fixtures under `tests/fixtures/`).
+- Releases: Conventional Commits + release-please (`release-please-config.json`). The version
+  lives in `pyproject.toml` and `smurfsniper/_version.py` (kept in sync by release-please;
+  `scripts/check_version.py` enforces it). CI is `.github/workflows/{ci,build,release-please}.yml`;
+  `build.yml` makes the single-file exe plus `SHA256SUMS.txt` and a CycloneDX SBOM.
+- Hidden `smurfsniper self-test --output PATH` imports every module, builds a QLabel and writes
+  JSON; CI uses it to smoke-test the frozen exe. `smurfsniper/_modules.py` is the static module
+  list for frozen builds (regenerate with `python scripts/gen_modules.py`).
 - `config.yaml` is committed and currently contains a real secret under
   `integrations.aws_bedrock.api_key` — do not commit live keys; prefer env vars / untracked
   files and gitignore the config.

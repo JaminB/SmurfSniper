@@ -4,25 +4,23 @@ import threading
 
 import httpx
 import keyboard
-
 from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtWidgets import QApplication
 
-from smurfsniper.api import cross_network, sc2pulse
-from smurfsniper.api.sc2pulse import SC2PulseError
-from smurfsniper.sounds import footprint_chime, one_tone_chime, two_tone_chime
 from smurfsniper.analyze import external_intel
 from smurfsniper.analyze.external_intel import ExternalIntel
 from smurfsniper.analyze.player_logs import PlayerLogAnalysis
 from smurfsniper.analyze.players import Player2v2Analysis, PlayerAnalysis
 from smurfsniper.analyze.teams import NoTeamFound, TeamAnalysis
+from smurfsniper.api import cross_network, sc2pulse
+from smurfsniper.api.sc2pulse import SC2PulseError
 from smurfsniper.enums import TeamFormat
 from smurfsniper.logger import logger
 from smurfsniper.models.config import Config, OverlayPreferences
 from smurfsniper.models.player import Player
 from smurfsniper.models.player_log import PlayerLog, init_player_log_db
+from smurfsniper.sounds import footprint_chime, one_tone_chime, two_tone_chime
 from smurfsniper.ui.overlay_manager import close_all_overlays
-
 
 POSTGAME_POSITIONS = [
     "top_left",
@@ -30,6 +28,7 @@ POSTGAME_POSITIONS = [
     "bottom_left",
     "bottom_right",
 ]
+
 
 class _HintBridge(QObject):
     """Marshals the cross-network hint overlay back onto the Qt thread.
@@ -148,10 +147,7 @@ class GamePoller:
                 match_status=p.get("result").lower(),
             )
 
-            if (
-                not most_recent
-                or most_recent.battlenet_id != stats.members.character.battlenetId
-            ):
+            if not most_recent or most_recent.battlenet_id != stats.members.character.battlenetId:
                 logger.info(f"Saving {player.name} to log.")
                 log.save()
 
@@ -180,9 +176,7 @@ class GamePoller:
             return
 
         self.current_opponents = [stats]
-        self._show_opponent_history(
-            stats, opp, self.config.preferences.overlay_player_log_1
-        )
+        self._show_opponent_history(stats, opp, self.config.preferences.overlay_player_log_1)
 
         self.player_analysis = PlayerAnalysis.from_player_stats(stats, player=opp)
 
@@ -211,9 +205,7 @@ class GamePoller:
         """
         opponents = list(self.current_opponents)
         prefs = self.config.preferences.overlay_external
-        threading.Thread(
-            target=self._do_scout, args=(opponents, prefs), daemon=True
-        ).start()
+        threading.Thread(target=self._do_scout, args=(opponents, prefs), daemon=True).start()
 
     def _do_scout(self, opponents, prefs):
         intel = []
@@ -228,13 +220,9 @@ class GamePoller:
             footprint_chime()
             self._hint_bridge.show.emit(prefs)
 
-    def _show_opponent_history(
-        self, stats, opp, overlay_preferences: OverlayPreferences
-    ):
+    def _show_opponent_history(self, stats, opp, overlay_preferences: OverlayPreferences):
         try:
-            logs = PlayerLogAnalysis.from_battlenet_id(
-                stats.members.character.battlenetId
-            )
+            logs = PlayerLogAnalysis.from_battlenet_id(stats.members.character.battlenetId)
             logs.show_overlay(
                 duration_seconds=overlay_preferences.seconds_visible,
                 position=overlay_preferences.position,
@@ -250,12 +238,8 @@ class GamePoller:
         opp1, opp2 = Player(**opp_team[0]), Player(**opp_team[1])
 
         try:
-            opp1_stats = opp1.get_player_stats(
-                self.config.me.mmr - 500, self.config.me.mmr + 500
-            )
-            opp2_stats = opp2.get_player_stats(
-                self.config.me.mmr - 500, self.config.me.mmr + 500
-            )
+            opp1_stats = opp1.get_player_stats(self.config.me.mmr - 500, self.config.me.mmr + 500)
+            opp2_stats = opp2.get_player_stats(self.config.me.mmr - 500, self.config.me.mmr + 500)
         except (SC2PulseError, IndexError):
             logger.warning("Could not find any records for one or more opponents.")
             return
@@ -267,12 +251,8 @@ class GamePoller:
         logger.info(f"Detected 2v2 opponents: {opp1.name}, {opp2.name}")
         two_tone_chime()
 
-        self._show_opponent_history(
-            opp1_stats, opp1, self.config.preferences.overlay_player_log_1
-        )
-        self._show_opponent_history(
-            opp2_stats, opp2, self.config.preferences.overlay_player_log_2
-        )
+        self._show_opponent_history(opp1_stats, opp1, self.config.preferences.overlay_player_log_1)
+        self._show_opponent_history(opp2_stats, opp2, self.config.preferences.overlay_player_log_2)
 
         self.player_2v2_analysis = Player2v2Analysis(ps1, ps2)
         self.player_2v2_analysis.show_overlay(

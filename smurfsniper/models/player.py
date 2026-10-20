@@ -1,5 +1,3 @@
-from typing import Dict, List, Optional, Set
-
 from pydantic import BaseModel, ValidationError
 
 from smurfsniper.api import sc2pulse
@@ -13,21 +11,21 @@ from smurfsniper.utils import create_team_legacy_uid
 
 
 class Members(BaseModel):
-    protossGamesPlayed: Optional[int] = 0
-    terranGamesPlayed: Optional[int] = 0
-    zergGamesPlayed: Optional[int] = 0
-    randomGamesPlayed: Optional[int] = 0
+    protossGamesPlayed: int | None = 0
+    terranGamesPlayed: int | None = 0
+    zergGamesPlayed: int | None = 0
+    randomGamesPlayed: int | None = 0
 
     character: Character
-    account: Dict
-    clan: Optional[Dict] = None
-    raceGames: Dict[str, int]
+    account: dict
+    clan: dict | None = None
+    raceGames: dict[str, int]
 
     # Pro/streamer reveal — embedded in the /characters response by SC2Pulse.
-    proId: Optional[int] = None
-    proNickname: Optional[str] = None
-    proTeam: Optional[str] = None
-    proPlayer: Optional[Dict] = None
+    proId: int | None = None
+    proNickname: str | None = None
+    proTeam: str | None = None
+    proPlayer: dict | None = None
 
 
 class PlayerStats(BaseModel):
@@ -39,17 +37,17 @@ class PlayerStats(BaseModel):
     currentStats: CurrentStats
     members: Members
 
-    _match_history_cache: Optional[TeamHistory] = None
-    _social_links_cache: Optional[Dict[str, str]] = None
-    _recent_matches_cache: Optional[Dict[int, List[RecentMatch]]] = None
-    _pro_details_cache: Optional[Dict] = None
+    _match_history_cache: TeamHistory | None = None
+    _social_links_cache: dict[str, str] | None = None
+    _recent_matches_cache: dict[int, list[RecentMatch]] | None = None
+    _pro_details_cache: dict | None = None
 
     @property
     def is_pro(self) -> bool:
         return self.members.proNickname is not None
 
     @property
-    def aligulac_id(self) -> Optional[int]:
+    def aligulac_id(self) -> int | None:
         details = self.pro_details()
         if details:
             aid = (details.get("proPlayer") or {}).get("aligulacId")
@@ -60,7 +58,7 @@ class PlayerStats(BaseModel):
             return None
         return (pp.get("proPlayer") or {}).get("aligulacId")
 
-    def pro_details(self) -> Optional[dict]:
+    def pro_details(self) -> dict | None:
         """Full pro bio + external links (country, earnings, Aligulac, Twitch...).
 
         Lazily fetched from SC2Pulse /entities for revealed pros only; cached.
@@ -79,7 +77,7 @@ class PlayerStats(BaseModel):
         self._pro_details_cache = entry or {}
         return entry
 
-    def social_links(self) -> Dict[str, str]:
+    def social_links(self) -> dict[str, str]:
         """External links (Twitch, sc2replaystats, battle.net) for this player.
 
         Lazily fetched from SC2Pulse /character-links. Only worth calling for
@@ -88,7 +86,7 @@ class PlayerStats(BaseModel):
         if self._social_links_cache is not None:
             return self._social_links_cache
 
-        links: Dict[str, str] = {}
+        links: dict[str, str] = {}
         try:
             data = sc2pulse.character_links(self.members.character.id)
         except sc2pulse.SC2PulseError as exc:
@@ -105,7 +103,7 @@ class PlayerStats(BaseModel):
         self._social_links_cache = links
         return links
 
-    def recent_matches(self, limit: int = 25) -> List[RecentMatch]:
+    def recent_matches(self, limit: int = 25) -> list[RecentMatch]:
         """Real recent matches (map, duration, decision, opponent) for this player.
 
         Lazily fetched from SC2Pulse /character-matches and cached. SC2Pulse only
@@ -123,7 +121,7 @@ class PlayerStats(BaseModel):
             logger.warning(f"Failed to fetch character-matches: {exc}")
             data = []
 
-        matches: List[RecentMatch] = []
+        matches: list[RecentMatch] = []
         for entry in data:
             parsed = RecentMatch.from_raw(entry, char_id)
             if parsed is not None:
@@ -138,16 +136,12 @@ class PlayerStats(BaseModel):
         return League.from_int(self.leagueMax).name
 
     @property
-    def match_history(self) -> Optional[TeamHistory]:
+    def match_history(self) -> TeamHistory | None:
 
         if self._match_history_cache is not None:
             return self._match_history_cache
 
-        uids: Set[str] = {
-            team.legacyUid
-            for team in self.members.character.teams
-            if team.legacyUid
-        }
+        uids: set[str] = {team.legacyUid for team in self.members.character.teams if team.legacyUid}
         if not uids:
             return None
 
@@ -195,10 +189,10 @@ class Player(BaseModel):
             result="Undecided",
         )
 
-    def matches(self) -> List[PlayerStats]:
+    def matches(self) -> list[PlayerStats]:
         data = sc2pulse.search_characters(self.name)
 
-        results: List[PlayerStats] = []
+        results: list[PlayerStats] = []
         skipped = 0
         for entry in data:
             try:
@@ -215,7 +209,7 @@ class Player(BaseModel):
         self,
         min_mmr: int = 0,
         max_mmr: int = 5000,
-        region: Optional[str] = None,
+        region: str | None = None,
     ) -> PlayerStats:
         """Pick the SC2Pulse candidate most likely to be this in-game player.
 
@@ -231,7 +225,7 @@ class Player(BaseModel):
         # In-game name has no discriminator; SC2Pulse names are "name#1234".
         query_name = self.name.split("#")[0].strip().casefold()
 
-        want_race: Optional[str] = None
+        want_race: str | None = None
         if self.race and self.race != "Unknown":
             try:
                 want_race = RaceCode.from_alias(self.race).name

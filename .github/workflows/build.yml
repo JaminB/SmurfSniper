@@ -1,0 +1,75 @@
+name: Build exe
+on:
+  workflow_call:
+    inputs:
+      tag: { type: string, default: "" }
+      upload_to_release: { type: boolean, default: false }
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to build and attach assets to (e.g. v0.2.0)"
+        type: string
+        default: ""
+      upload_to_release:
+        description: "Upload the exe, checksum and SBOM to the release for this tag"
+        type: boolean
+        default: false
+permissions: { contents: write }
+jobs:
+  exe:
+    runs-on: windows-latest
+    defaults: { run: { shell: pwsh } }
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ inputs.tag || github.sha }}" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - name: Check version consistency
+        env: { TAG: "${{ inputs.tag }}" }
+        run: |
+          $tag = $env:TAG
+          if ($tag) { python scripts/check_version.py --tag $tag } else { python scripts/check_version.py }
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Read version
+        id: ver
+        run: |
+          $v = python -c "from smurfsniper._version import __version__ as v; print(v)"
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+      - name: Install into clean build venv
+        run: |
+          python -m venv .venv-build
+          .venv-build\Scripts\python.exe -m pip install --upgrade pip
+          .venv-build\Scripts\pip install . ".[build]"
+      - name: Build single-file exe
+        run: .venv-build\Scripts\pyinstaller --clean --noconfirm smurfsniper.spec
+      - name: Smoke test
+        run: |
+          $p = Start-Process dist\smurfsniper.exe -ArgumentList 'self-test','--output','selftest.json' -Wait -PassThru -NoNewWindow
+          if ($p.ExitCode -ne 0) { throw "self-test exited with $($p.ExitCode)" }
+          $r = Get-Content selftest.json -Raw | ConvertFrom-Json
+          if (-not $r.ok) { throw "self-test reported failure" }
+          if ($r.version -ne '${{ steps.ver.outputs.version }}') { throw "version mismatch: $($r.version)" }
+      - name: Rename, checksum and SBOM
+        run: |
+          $v = '${{ steps.ver.outputs.version }}'
+          $exe = "smurfsniper-$v-windows-x64.exe"
+          Rename-Item dist\smurfsniper.exe $exe
+          $line = (Get-FileHash -Algorithm SHA256 "dist\$exe").Hash.ToLower() + " *" + $exe
+          [System.IO.File]::WriteAllText("$PWD\dist\SHA256SUMS.txt", $line + "`n", [System.Text.Encoding]::ASCII)
+          .venv-build\Scripts\cyclonedx-py environment .venv-build\Scripts\python.exe --of JSON -o "dist\smurfsniper-$v.cdx.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smurfsniper-${{ steps.ver.outputs.version }}-windows
+          path: |
+            dist/smurfsniper-*.exe
+            dist/SHA256SUMS.txt
+            dist/*.cdx.json
+          retention-days: 14
+          if-no-files-found: error
+      - name: Upload to release
+        if: ${{ inputs.upload_to_release }}
+        env: { GH_TOKEN: "${{ github.token }}", TAG: "${{ inputs.tag }}" }
+        run: |
+          if (-not $env:TAG) { throw "upload_to_release requires a tag" }
+          $v = '${{ steps.ver.outputs.version }}'
+          gh release upload "$env:TAG" "dist\smurfsniper-$v-windows-x64.exe" dist\SHA256SUMS.txt "dist\smurfsniper-$v.cdx.json" --clobber

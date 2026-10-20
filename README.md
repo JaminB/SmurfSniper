@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <b><a href="https://github.com/JaminB/smurfsniper/releases/latest">⬇️ Download the latest <code>smurfsniper-&lt;version&gt;.exe</code></a></b> — no Python required.
+  <b><a href="https://github.com/JaminB/smurfsniper/releases/latest">⬇️ Download the latest <code>smurfsniper-&lt;version&gt;-windows-x64.exe</code></a></b> — no Python required.
 </p>
 
 **SmurfSniper** is a real-time **StarCraft II** overlay and analysis tool. It watches your
@@ -122,7 +122,7 @@ On demand, gather a deeper scouting profile on the current opponent(s):
 ## Installation
 
 ### Option A — Download the executable
-Grab the latest `smurfsniper-<version>.exe` from the
+Grab the latest `smurfsniper-<version>-windows-x64.exe` from the
 [**latest release**](https://github.com/JaminB/smurfsniper/releases/latest) and run it.
 No Python install required.
 
@@ -240,6 +240,40 @@ smurfsniper validate --config config.yaml --show
 | `--version` | Print the version and exit. |
 
 ---
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+ruff check . && ruff format --check .
+pytest            # Qt tests run headless (QT_QPA_PLATFORM=offscreen)
+```
+
+Tests never touch the live network; tests marked `live` are opt-in (`pytest -m live`).
+
+## Releases & versioning
+
+- Commits and PR titles follow [Conventional Commits](https://www.conventionalcommits.org/)
+  (`feat:`, `fix:`, `ci:`, `refactor:`, `docs:` ...). Squash-merge titles drive the version bump.
+- On every push to `main`, [release-please](https://github.com/googleapis/release-please) opens
+  (or updates) a release PR that bumps the version in `pyproject.toml` and
+  `smurfsniper/_version.py` and updates `CHANGELOG.md`. Merging it tags the release and
+  builds the single-file exe, attaching `smurfsniper-<version>-windows-x64.exe`,
+  `SHA256SUMS.txt` and a CycloneDX SBOM (`smurfsniper-<version>.cdx.json`).
+- Repo setting required: **Settings > Actions > General > "Allow GitHub Actions to create and
+  approve pull requests"** must be enabled.
+- Optional: add a `RELEASE_PLEASE_TOKEN` personal access token secret. PRs created with the
+  default `GITHUB_TOKEN` do not trigger other workflows, so without the PAT the release PR
+  will not run CI automatically.
+- To rebuild or re-attach assets to an existing release, run the **Build exe** workflow manually
+  with the tag and `upload_to_release` enabled.
+
+Verify a download against the published checksum:
+
+```powershell
+Get-FileHash -Algorithm SHA256 .\smurfsniper-<version>-windows-x64.exe
+# compare with the line in SHA256SUMS.txt
+```
 
 ## License
 

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import click
 import yaml
@@ -15,7 +16,7 @@ from smurfsniper.models.config import Config, Preferences
 DEFAULT_URL = "http://localhost:6119/game"
 
 
-def load_config(path: Path) -> Dict[str, Any]:
+def load_config(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise click.ClickException(f"Config file not found: {path}")
 
@@ -26,21 +27,19 @@ def load_config(path: Path) -> Dict[str, Any]:
         return yaml.safe_load(f) or {}
 
 
-def apply_overrides(config: Dict[str, Any], overrides: list[str]) -> None:
+def apply_overrides(config: dict[str, Any], overrides: list[str]) -> None:
     """
     Apply overrides of the form key.subkey=value
     NOTE: These apply BEFORE pydantic validation.
     """
     for item in overrides:
         if "=" not in item:
-            raise click.ClickException(
-                f"Invalid override '{item}'. Expected key=value"
-            )
+            raise click.ClickException(f"Invalid override '{item}'. Expected key=value")
 
         key, value = item.split("=", 1)
         parts = key.split(".")
 
-        cursor: Dict[str, Any] = config
+        cursor: dict[str, Any] = config
         for part in parts[:-1]:
             cursor = cursor.setdefault(part, {})
 
@@ -48,10 +47,8 @@ def apply_overrides(config: Dict[str, Any], overrides: list[str]) -> None:
         if value.lower() in {"true", "false"}:
             v = value.lower() == "true"
         else:
-            try:
+            with contextlib.suppress(ValueError):
                 v = int(value)
-            except ValueError:
-                pass
 
         cursor[parts[-1]] = v
 
@@ -69,7 +66,8 @@ def load_and_validate_config(
     try:
         return Config.model_validate(raw)
     except Exception as e:
-        raise click.ClickException(f"Config validation failed: {e}")
+        raise click.ClickException(f"Config validation failed: {e}") from e
+
 
 def run_service(
     *,
@@ -89,6 +87,7 @@ def run_service(
         config_file_path=str(config_path),
         app=app,
     )
+
 
 @click.group(
     context_settings={"help_option_names": ["-h", "--help"]},
@@ -166,6 +165,7 @@ def run(
 
     # GUI path — create the single QApplication here and reuse it for the loop.
     from PySide6.QtWidgets import QApplication
+
     from smurfsniper.ui.config_editor import edit_config
 
     app = QApplication.instance() or QApplication([])
@@ -238,6 +238,68 @@ def validate(
     if show:
         click.echo()
         click.echo(yaml.dump(config.model_dump(), sort_keys=False))
+
+
+def _discover_modules() -> list[str]:
+    """Every importable module name under the smurfsniper package.
+
+    Falls back to the static list in ``_modules.py`` when the package is frozen and
+    ``pkgutil`` cannot see the PyInstaller-archived modules.
+    """
+    import pkgutil
+
+    import smurfsniper
+
+    names = sorted(
+        m.name for m in pkgutil.walk_packages(smurfsniper.__path__, prefix="smurfsniper.")
+    )
+    if not names:
+        from smurfsniper._modules import MODULES
+
+        names = list(MODULES)
+    return names
+
+
+@cli.command("self-test", hidden=True)
+@click.option(
+    "--output",
+    "output",
+    required=True,
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="Where to write the JSON result",
+)
+def self_test(output: Path) -> None:
+    """Import every module and build a Qt widget; used by CI to smoke-test the exe."""
+    import importlib
+    import json
+    import os
+    import sys
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    try:
+        import PySide6
+        from PySide6.QtWidgets import QApplication, QLabel
+
+        names = _discover_modules()
+        for name in names:
+            importlib.import_module(name)
+        app = QApplication.instance() or QApplication([])
+        label = QLabel("self-test")
+        label.deleteLater()
+        del app
+        result: dict[str, Any] = {
+            "version": VERSION,
+            "modules": len(names),
+            "qt": PySide6.__version__,
+            "ok": True,
+        }
+        code = 0
+    except Exception as e:  # report any failure to CI
+        result = {"ok": False, "error": f"{type(e).__name__}: {e}"}
+        code = 1
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(result), encoding="utf-8")
+    sys.exit(code)
 
 
 def main() -> None:

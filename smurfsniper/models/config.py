@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List, Optional
 
 import yaml
 from pydantic import BaseModel
@@ -13,7 +12,7 @@ class Me(BaseModel):
 class Team(BaseModel):
     name: str
     mmr: int
-    members: List[str]
+    members: list[str]
 
     def __contains__(self, item: str) -> bool:
         return item in self.members
@@ -42,9 +41,7 @@ class Preferences(BaseModel):
     overlay_team: OverlayPreferences
     overlay_player_log_1: OverlayPreferences
     overlay_player_log_2: OverlayPreferences
-    overlay_external: OverlayPreferences = OverlayPreferences(
-        position="top_center"
-    )
+    overlay_external: OverlayPreferences = OverlayPreferences(position="top_center")
 
     @classmethod
     def from_yaml(cls, data: dict) -> "Preferences":
@@ -87,14 +84,14 @@ class Aligulac(BaseModel):
 
 
 class Integrations(BaseModel):
-    aligulac: Optional[Aligulac] = None
+    aligulac: Aligulac | None = None
 
 
 class Config(BaseModel):
     me: Me
     team: Team
-    preferences: Optional[Preferences] = None
-    integrations: Optional[Integrations] = None
+    preferences: Preferences | None = None
+    integrations: Integrations | None = None
 
     @classmethod
     def from_config_file(cls, path: str | Path) -> "Config":
@@ -136,9 +133,7 @@ class Config(BaseModel):
             and self.integrations.aligulac is not None
             and self.integrations.aligulac.api_key
         ):
-            out["integrations"] = {
-                "aligulac": {"api_key": self.integrations.aligulac.api_key}
-            }
+            out["integrations"] = {"aligulac": {"api_key": self.integrations.aligulac.api_key}}
         return out
 
     def write_config_file(self, path: str | Path) -> None:

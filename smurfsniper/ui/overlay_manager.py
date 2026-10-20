@@ -1,3 +1,5 @@
+import contextlib
+
 from PySide6.QtWidgets import QApplication
 
 OPEN_OVERLAYS = []
@@ -13,10 +15,8 @@ def close_all_overlays():
         return
 
     for w in reversed(OPEN_OVERLAYS):
-        try:
+        with contextlib.suppress(Exception):
             w.close()
-        except:
-            pass
 
     OPEN_OVERLAYS.clear()
 

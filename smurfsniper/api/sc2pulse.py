@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import random
 import time
+from collections.abc import Sequence
 from functools import lru_cache
-from typing import Dict, List, Optional, Sequence
 
 import httpx
 
@@ -47,7 +47,7 @@ class SC2PulseNotFound(SC2PulseError):
     """The API responded but no matching record was found."""
 
 
-_client: Optional[httpx.Client] = None
+_client: httpx.Client | None = None
 
 
 def _get_client() -> httpx.Client:
@@ -72,7 +72,7 @@ def _get(path: str, params) -> list:
     URL-encoded. Raises ``SC2PulseError`` on non-retryable or exhausted failures.
     """
     client = _get_client()
-    last_exc: Optional[Exception] = None
+    last_exc: Exception | None = None
 
     for attempt in range(MAX_RETRIES):
         try:
@@ -97,7 +97,7 @@ def _get(path: str, params) -> list:
                     raise SC2PulseError(f"Invalid JSON from {resp.url}") from exc
 
         if attempt < MAX_RETRIES - 1:
-            delay = BACKOFF_BASE * (2 ** attempt) + random.uniform(0, BACKOFF_BASE)
+            delay = BACKOFF_BASE * (2**attempt) + random.uniform(0, BACKOFF_BASE)
             logger.warning(
                 f"SC2Pulse {path} failed ({last_exc}); retry {attempt + 1}/"
                 f"{MAX_RETRIES - 1} in {delay:.1f}s"
@@ -155,12 +155,12 @@ def tier_thresholds(queue: str, team_type: str, season: int, region: str) -> dic
 
 
 _STREAMS_TTL = 30.0  # seconds; live-stream list changes slowly
-_streams_cache: Optional[list] = None
+_streams_cache: list | None = None
 _streams_fetched_at = 0.0
 
 
 @lru_cache(maxsize=256)
-def pro_player(pro_player_id: int) -> Optional[dict]:
+def pro_player(pro_player_id: int) -> dict | None:
     """Full pro bio + external links via /entities?proPlayerId.
 
     Returns the first ``proPlayers`` entry ({proPlayer, proTeam, links}) or
@@ -206,13 +206,13 @@ def team_histories(legacy_uids: Sequence[str]) -> list:
     return merged
 
 
-def parse_team_history(data, legacy_uid: str) -> Optional[TeamHistory]:
+def parse_team_history(data, legacy_uid: str) -> TeamHistory | None:
     """Merge a /team-histories response into a single deduped ``TeamHistory``.
 
     Reuses ``TeamHistoryData`` for parsing + TIMESTAMP/RATING length validation.
     Returns ``None`` when there are no points.
     """
-    merged_points: List[TeamHistoryPoint] = []
+    merged_points: list[TeamHistoryPoint] = []
 
     for entry in data:
         history = entry.get("history") if isinstance(entry, dict) else None
@@ -228,7 +228,7 @@ def parse_team_history(data, legacy_uid: str) -> Optional[TeamHistory]:
 
     merged_points.sort(key=lambda p: p.timestamp)
 
-    deduped: List[TeamHistoryPoint] = []
+    deduped: list[TeamHistoryPoint] = []
     last_ts = None
     for p in merged_points:
         if p.timestamp != last_ts:

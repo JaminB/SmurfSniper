@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, IntEnum
 
 
 class Region(Enum):
@@ -37,7 +37,7 @@ class RaceCode(Enum):
             try:
                 return cls[alias.upper()]
             except KeyError:
-                raise ValueError(f"Unknown race alias: {alias!r}")
+                raise ValueError(f"Unknown race alias: {alias!r}") from None
 
 
 class TeamFormat(Enum):
@@ -51,9 +51,6 @@ class TeamFormat(Enum):
 class TeamType(Enum):
     ARRANGED = 0
     RANDOM = 1
-
-
-from enum import IntEnum
 
 
 class League(IntEnum):

@@ -24,16 +24,16 @@ class TeamAnalysis(BaseAnalysis, BaseModel):
         return self.team.match_history
 
     @classmethod
-    def from_team(cls, team: Team) -> "TeamAnalysis":
+    def from_team(cls, team: Team) -> TeamAnalysis:
         return cls(team=team)
 
     @classmethod
-    def from_players(cls, players: list[Player]) -> "TeamAnalysis":
+    def from_players(cls, players: list[Player]) -> TeamAnalysis:
         stats = [p.get_player_stats() for p in players]
         return cls.from_player_stats(stats)
 
     @classmethod
-    def from_players_stats(cls, player_stats: list[PlayerStats]) -> "TeamAnalysis":
+    def from_players_stats(cls, player_stats: list[PlayerStats]) -> TeamAnalysis:
         ids = sorted(ps.members.character.battlenetId for ps in player_stats)
 
         found = []
@@ -47,7 +47,7 @@ class TeamAnalysis(BaseAnalysis, BaseModel):
         return cls(team=Team.merge(found))
 
     @classmethod
-    def from_player_names(cls, names: list[str]) -> "TeamAnalysis":
+    def from_player_names(cls, names: list[str]) -> TeamAnalysis:
         players = [Player.from_player_name(n) for n in names]
         return cls.from_players(players)
 
@@ -75,9 +75,7 @@ class TeamAnalysis(BaseAnalysis, BaseModel):
     def _overlay_side_panel(self, summary: dict) -> str:
         rows = []
         for m in summary["Member Races"]:
-            rows.append(
-                f"{m['name']:<12} {m['primary_race']:<7} {m['total_games']:>4}g"
-            )
+            rows.append(f"{m['name']:<12} {m['primary_race']:<7} {m['total_games']:>4}g")
         return "\n".join(rows)
 
     def summary(self) -> dict:
@@ -110,9 +108,7 @@ class TeamAnalysis(BaseAnalysis, BaseModel):
             "Team": self.name,
             "Members": [m.character.name for m in team.members],
             "Member Races": member_races,
-            "Playing For": (
-                f"{human_friendly_duration(first)} ({first})" if first else "unknown"
-            ),
+            "Playing For": (f"{human_friendly_duration(first)} ({first})" if first else "unknown"),
             "Most Recent Game": last,
             "Current Rating": team.rating,
             "League": getattr(team.league, "name", str(team.league)),
