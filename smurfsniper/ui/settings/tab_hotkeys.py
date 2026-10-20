@@ -186,7 +186,17 @@ class HotkeysTab(SettingsTab):
             else:
                 row.show_issue(by_action.get(action))
 
+    def stop_recording(self) -> None:
+        """Cancel any in-progress recording (resumes the global hotkeys)."""
+        for row in self.rows.values():
+            row.stop_recording()
+
+    def hideEvent(self, e) -> None:  # tab switched away or window closed
+        self.stop_recording()
+        super().hideEvent(e)
+
     def reset_defaults(self) -> None:
+        self.stop_recording()
         self.config.hotkeys = HotkeyConfig()
         self.set_config(self.config)
         self.commit()
@@ -195,7 +205,21 @@ class HotkeysTab(SettingsTab):
     def set_binding(self, action: HotkeyAction, binding: str) -> bool:
         """Apply ``binding`` unless it has errors. Returns whether it was applied."""
         old = getattr(self.hk, action.value)
-        setattr(self.hk, action.value, normalize(binding))
+        norm = normalize(binding)
+        # validate_bindings reports a duplicate on the later action only, so check
+        # both directions here: the new binding must not steal another action's keys.
+        taken = next(
+            (
+                a
+                for a in HotkeyAction
+                if a is not action and normalize(getattr(self.hk, a.value)) == norm
+            ),
+            None,
+        )
+        if taken is not None:
+            self._show_issues({action: f"Already used by {ACTION_LABELS[taken]}."})
+            return False
+        setattr(self.hk, action.value, norm)
         errors = [
             i for i in validate_bindings(self.hk) if i.action is action and i.level == "error"
         ]

@@ -145,6 +145,30 @@ def test_duplicate_binding_is_refused_with_inline_error(win, qtbot):
     assert row.message.property("role") == "error"
 
 
+def test_binding_that_steals_an_earlier_actions_keys_is_refused(win, qtbot):
+    # validate_bindings reports a duplicate on the later action; the earlier one
+    # must not be able to take its keys either.
+    tab = win.tab("Hotkeys")
+    with qtbot.assertNotEmitted(win.changed):
+        assert not tab.set_binding(HotkeyAction.OPPONENT_CARD, "ctrl+shift+r")
+    assert win.config.hotkeys.opponent_card == "ctrl+shift+1"
+    row = tab.rows[HotkeyAction.OPPONENT_CARD]
+    assert "Re-detect game" in row.message.text()
+
+
+def test_leaving_the_tab_or_closing_cancels_recording(win, qtbot, hooks):
+    tab = win.tab("Hotkeys")
+    win.show_tab("Hotkeys")
+    row = tab.rows[HotkeyAction.INTEL]
+    row.start_recording()
+    win.show_tab("Account")
+    assert not row.recording and hooks.calls[-1] == "resume"
+    win.show_tab("Hotkeys")
+    row.start_recording()
+    win.close()
+    assert not row.recording and hooks.calls[-1] == "resume"
+
+
 def test_conflicting_binding_warns_but_applies(win, qtbot):
     tab = win.tab("Hotkeys")
     with qtbot.waitSignal(win.changed, timeout=1000):
