@@ -38,7 +38,7 @@ def setup_logging(level: str = "INFO", *, console: bool = True) -> None:
             retention="14 days",
             compression="zip",
             format=_FILE_FORMAT,
-            level="DEBUG",
+            level=level,
             enqueue=True,
         )
     except OSError as e:  # read-only profile etc.: keep running with console only

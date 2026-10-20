@@ -216,7 +216,8 @@ atomically (tmp file + `os.replace`).
   the `keyboard` library format, e.g. `ctrl+shift+1`) and `enabled`.
 - `integrations`: `aligulac_api_key`, `liquipedia_enabled`, `liquipedia_contact`.
 - `advanced`: `sc2_client_url`, `ui_poll_ms`, `mmr_window` (default **±500**, widened to ±1000
-  with lower confidence when nobody fits), `sounds_enabled`, `log_level`, `disk_cache`.
+  with lower confidence when nobody fits), `sounds_enabled`, `log_level` (console and
+  `app.log`), `disk_cache`.
 
 **v1 migration**: a file with `me` / `preferences` and no `version` is migrated on load and
 the original is copied to `config.v1.bak.yaml`. `me.name`/`me.mmr` -> `account`, `team.members`
@@ -225,8 +226,11 @@ kept, the other overlay blocks are dropped (logged) and `integrations.aws_bedroc
 never re-written.
 
 Account detection: with `auto_detect` on, the name is learned from a vs-AI game or from a name
-present in 2 of the last 3 games, then `SC2Pulse` is searched (auto-chosen when exactly one
-exact-name character played in the last 7 days; otherwise a tray balloon offers the picker).
+present in 2 of the last 3 games (configured teammates never count), then `SC2Pulse` is searched
+(auto-chosen when exactly one exact-name character played in the last 7 days; otherwise a tray
+balloon offers the picker, prefilled with the name). A name that is already configured but has
+no `character_id` (e.g. a migrated v1 config) is searched once per run the first time it is seen
+in a game.
 The first-run picker (`ui/account_picker.py`) appears only while `account.character_id` is unset
 and "Detect automatically" has not been chosen (`state.json`).
 

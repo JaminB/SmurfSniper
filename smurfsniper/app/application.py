@@ -33,6 +33,7 @@ from smurfsniper.ui.overlays import show_sample
 from smurfsniper.ui.settings import SettingsHooks, SettingsWindow
 
 SAVE_DEBOUNCE_MS = 500
+REBUILD_DEBOUNCE_MS = 1000  # typing an API key must not rebuild clients per keystroke
 _IDENTITY_FIELDS = (
     "character_id",
     "toon_handle",
@@ -93,6 +94,10 @@ class SmurfSniperApp(QObject):
         self._save_timer.setSingleShot(True)
         self._save_timer.setInterval(SAVE_DEBOUNCE_MS)
         self._save_timer.timeout.connect(self.save_now)
+        self._rebuild_timer = QTimer(self)
+        self._rebuild_timer.setSingleShot(True)
+        self._rebuild_timer.setInterval(REBUILD_DEBOUNCE_MS)
+        self._rebuild_timer.timeout.connect(self._rebuild_clients)
 
     # --------------------------------------------------------------- lifecycle
     def run(self) -> int:
@@ -178,6 +183,7 @@ class SmurfSniperApp(QObject):
             self.tray.hide()
         if self._save_timer.isActive():
             self._save_timer.stop()
+        self._rebuild_timer.stop()
         self.save_now()
         if self.service is not None:
             self.service.stop()
@@ -230,7 +236,7 @@ class SmurfSniperApp(QObject):
             before["integrations"] != after["integrations"]
             or before["advanced"]["sc2_client_url"] != after["advanced"]["sc2_client_url"]
         ):
-            self._rebuild_clients()
+            self._rebuild_timer.start()
         if self.service is not None:
             self.service.sounds.enabled = old.advanced.sounds_enabled
             if self.service.poller is not None:
@@ -246,6 +252,7 @@ class SmurfSniperApp(QObject):
         self.schedule_save()
 
     def _rebuild_clients(self) -> None:
+        self._rebuild_timer.stop()
         if self.service is None or self.clients is None:
             return
         logger.info("Rebuilding API clients after a settings change")
@@ -437,7 +444,7 @@ class SmurfSniperApp(QObject):
         self.tray.message(
             "Which account is yours?",
             f"SmurfSniper could not tell if you are {who}. Click here to choose.",
-            on_click=self.show_picker,
+            on_click=lambda: self.show_picker(names[0] if names else ""),
         )
 
     # ---------------------------------------------------------------- first run

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 from collections.abc import Callable
 
 from PySide6.QtCore import QObject, QUrl
@@ -82,6 +81,8 @@ class TrayController(QObject):
 
         self.icon.setContextMenu(self.menu)
         self.icon.activated.connect(self._on_activated)
+        self._on_message_click: Callable[[], None] | None = None
+        self.icon.messageClicked.connect(self._message_clicked)
         self.set_hotkeys(hotkeys)
         self.set_status(self.status_text)
 
@@ -115,11 +116,13 @@ class TrayController(QObject):
         self.warning.setVisible(unavailable)
 
     def message(self, title: str, text: str, on_click: Callable[[], None] | None = None) -> None:
-        if on_click is not None:
-            with contextlib.suppress(RuntimeError, TypeError):
-                self.icon.messageClicked.disconnect()
-            self.icon.messageClicked.connect(on_click)
+        # Each balloon gets its own click handler; a click never runs a stale action.
+        self._on_message_click = on_click
         self.icon.showMessage(title, text, QSystemTrayIcon.MessageIcon.NoIcon, 8000)
+
+    def _message_clicked(self) -> None:
+        if self._on_message_click is not None:
+            self._on_message_click()
 
     def menu_labels(self) -> list[str]:
         return [a.text() for a in self.menu.actions() if not a.isSeparator()]

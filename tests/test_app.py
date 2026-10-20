@@ -113,13 +113,18 @@ def test_apply_config_rebinds_hotkeys_without_restart(app, keyboard):
     assert app.config.hotkeys.intel == "ctrl+shift+9"
 
 
-def test_apply_config_rebuilds_clients_for_a_new_key(app):
+def test_apply_config_rebuilds_clients_for_a_new_key(app, qtbot):
     assert app.clients.aligulac is None
     old_cache = app.clients.cache
     new = app.config.model_copy(deep=True)
     new.integrations.aligulac_api_key = "k"  # type: ignore[assignment]
     app.apply_config(new)
-    assert app.clients.aligulac is not None
+    # debounced: typing a key does not rebuild the clients on every keystroke
+    assert app.clients.aligulac is None and app._rebuild_timer.isActive()
+    newer = app.config.model_copy(deep=True)
+    newer.integrations.aligulac_api_key = "key"  # type: ignore[assignment]
+    app.apply_config(newer)
+    qtbot.waitUntil(lambda: app.clients.aligulac is not None, timeout=3000)
     assert app.service.clients is app.clients and app.service.pipeline.clients is app.clients
     assert app.clients.cache is old_cache  # responses stay cached across the rebuild
 
@@ -216,3 +221,14 @@ def test_account_picker_shown_on_first_run_only(qtbot, tmp_dirs, pulse, fixture_
         assert b.picker is None
     finally:
         b.shutdown()
+
+
+def test_balloon_click_runs_only_its_own_handler(app):
+    assert app.tray is not None
+    app._on_needs_picker(["hero", "rival"])
+    app.tray.message("SmurfSniper", "plain notice")  # no click handler
+    app.tray._message_clicked()
+    assert app.picker is None
+    app._on_needs_picker(["hero", "rival"])
+    app.tray._message_clicked()
+    assert app.picker is not None and app.picker.search.text() == "hero"
