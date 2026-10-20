@@ -1,8 +1,7 @@
 """Single runtime source of truth for the app version.
 
-Default is a dev placeholder. The release CI (.github/workflows/build-windows.yml)
-overwrites this file with the version string supplied at trigger time before
-building the frozen exe.
+release-please maintains this file (and the pyproject.toml version) on release PRs.
+Do not edit the version by hand.
 """
 
-__version__ = "0.0.0+dev"
+__version__ = "0.1.0"  # x-release-please-version

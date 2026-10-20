@@ -18,3 +18,9 @@ logs/
 
 # IDE
 .idea/
+
+# Tooling / outputs
+previews/
+.pytest_cache/
+.ruff_cache/
+*.cdx.json

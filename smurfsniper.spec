@@ -7,11 +7,6 @@ Output: dist/smurfsniper.exe (self-contained; no Python required on the target).
 PySide6 is handled by PyInstaller's bundled Qt hooks. keyboard/peewee are listed
 as hidden imports defensively.
 
-frida is a declared project dependency but is NOT imported anywhere in the
-source. Its native module (_frida.pyd, ~113 MB) is the single largest payload,
-so it is excluded from the freeze. If frida ever gets used at runtime, drop it
-from _EXCLUDES below (and it will be picked up automatically).
-
 The app only uses QtCore/QtGui/QtWidgets, but the PySide6 hook drags in the
 whole Qt distribution (QML, WebEngine, Quick, Multimedia, translations, the
 software-OpenGL and ffmpeg fallbacks, ...). We exclude those unused Qt python
@@ -22,6 +17,12 @@ stay bundled.
 """
 
 import os
+import re
+
+# Version comes from the single source of truth (maintained by release-please).
+with open(os.path.join(SPECPATH, "smurfsniper", "_version.py"), encoding="utf-8") as _f:
+    VERSION = re.search(r'__version__\s*=\s*"([^"]+)"', _f.read()).group(1)
+print(f"smurfsniper.spec: building version {VERSION}")
 
 # Unused Qt python submodules — keep PyInstaller from analyzing/collecting them.
 _QT_EXCLUDES = [
@@ -119,11 +120,11 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=["keyboard", "peewee"],
+    hiddenimports=["keyboard", "peewee", "smurfsniper._modules"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["tkinter", "frida", "_frida", *_QT_EXCLUDES],
+    excludes=["tkinter", *_QT_EXCLUDES],
     noarchive=False,
 )
 
