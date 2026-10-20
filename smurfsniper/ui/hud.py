@@ -185,6 +185,10 @@ class HudController(QObject):
     @Slot(object)
     def on_game_started(self, ctx: GameContext) -> None:
         self._check_thread()
+        if self.ctx is not None and ctx.game_id == self.game_id:
+            # Already started from an early pipeline update (see on_update); starting
+            # again would wipe the rows that have arrived since.
+            return
         self.reset_for_new_game()
         self.ctx = ctx
         self.game_id = ctx.game_id

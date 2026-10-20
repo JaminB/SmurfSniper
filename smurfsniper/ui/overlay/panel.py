@@ -113,6 +113,10 @@ class PanelHost:
     def __init__(self) -> None:
         self.key: str | None = None
         self.panel: Panel | None = None
+        # Panels fading out. Python owns these parentless windows, so dropping the
+        # last reference (or a GC pass over the dismiss callback cycle) would destroy
+        # one mid-fade; keep them until the fade is done.
+        self._closing: list[Panel] = []
 
     def toggle(self, key: str, builder: Callable[[], Panel]) -> Panel | None:
         """Visible ``key`` -> dismiss it. Otherwise dismiss the current one, show ``key``."""
@@ -135,7 +139,13 @@ class PanelHost:
     def hide(self) -> None:
         old, self.panel, self.key = self.panel, None, None
         if old is not None:
-            old.dismiss(then=old.deleteLater)
+            self._closing.append(old)
+            old.dismiss(then=lambda: self._closed(old))
+
+    def _closed(self, panel: Panel) -> None:
+        if panel in self._closing:
+            self._closing.remove(panel)
+        panel.deleteLater()
 
     def set_tokens(self, tokens: TokenContext) -> None:
         if self.panel is not None:

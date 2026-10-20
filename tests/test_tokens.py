@@ -82,7 +82,8 @@ def test_fmt_league_and_percent():
 
 
 def test_fmt_intel_bits():
-    assert fmt.aligulac_rating(2.4312, 12) == "Aligulac 2,431 (#12)"
+    assert fmt.aligulac_rating(2.4312, 12) == "Aligulac 3,431 (#12)"
+    assert fmt.aligulac_rating(0.0, None) == "Aligulac 1,000"
     assert fmt.aligulac_rating(None, 1) is None
     assert fmt.country("fi", emoji=False) == "FI"
     assert fmt.country("FI", emoji=True) == "\U0001f1eb\U0001f1ee"

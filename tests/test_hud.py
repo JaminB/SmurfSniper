@@ -353,3 +353,13 @@ def test_preview_twice_then_ends(env, qtbot):
     hud._end_preview()
     assert not card.isVisible()
     qtbot.wait(10)
+
+
+def test_duplicate_game_started_keeps_arrived_rows(env):
+    hud, bus, *_ = env
+    c = start(hud, bus)
+    feed(hud, 1, 0, pd.smurf_profile())
+    rows = hud.card.row_count()
+    assert rows > 1
+    bus.game_started.emit(c)  # same game delivered again (e.g. after an early update)
+    assert hud.card.row_count() == rows and hud.card.shown

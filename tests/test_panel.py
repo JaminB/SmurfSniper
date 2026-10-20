@@ -28,6 +28,19 @@ def test_toggle_shows_hides_and_swaps(qtbot, no_anim):
     assert host.current() is None
 
 
+def test_hidden_panel_survives_gc_until_its_fade_out_ends(qtbot):
+    import gc
+
+    host = PanelHost()
+    host.toggle("intel", lambda: make("Scouting intel", "ctrl+shift+2"))
+    qtbot.waitUntil(lambda: host.panel is not None and host.panel.windowOpacity() > 0.9)
+    host.hide()
+    gc.collect()
+    closing = [w for w in host._closing if w.isVisible()]
+    assert len(closing) == 1  # still fading out, not destroyed
+    qtbot.waitUntil(lambda: not host._closing, timeout=2000)
+
+
 def test_header_chip_shows_the_hotkey(qtbot):
     p = make("Scouting intel", "ctrl+shift+2")
     assert p.chip.text().startswith(to_display("ctrl+shift+2"))
@@ -44,7 +57,7 @@ def test_loading_then_body(qtbot, no_anim):
     assert not p.loading
     assert not any(isinstance(w, Skeleton) for w in p.body_widgets())
     text = " ".join(p.texts())
-    assert "Serral" in text and "Aligulac 2,431 (#1)" in text
+    assert "Serral" in text and "Aligulac 3,431 (#1)" in text
     assert "FORM" in text and "MAPS" in text and "LINKS" in text
     assert "Last opponent links" in text
 

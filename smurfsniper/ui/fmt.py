@@ -125,10 +125,15 @@ def country(code: str | None, *, emoji: bool | None = None) -> str | None:
 
 
 def aligulac_rating(rating: float | None, position: int | None) -> str | None:
-    """Aligulac stores ratings around 0-4; the site shows them x1000."""
-    if rating is None or rating <= 0:
+    """Aligulac's site shows the API rating as ``(r + 1) * 1000`` (its ``ratscale``).
+
+    New players start at 0 internally (1,000 on the site); weak players go negative.
+    """
+    if rating is None:
         return None
-    shown = round(rating * 1000) if rating < 10 else round(rating)
+    shown = round((rating + 1.0) * 1000)
+    if shown <= 0:
+        return None
     return f"Aligulac {shown:,}" + (f" (#{position})" if position else "")
 
 
