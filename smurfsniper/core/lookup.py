@@ -178,8 +178,16 @@ class LookupPipeline(QObject):
     def _is_current(self, game_id: int) -> bool:
         return game_id == self._game_id
 
-    def _emit(self, u: LookupUpdate) -> None:
+    def _emit(self, u: LookupUpdate, *, finished: bool = False) -> None:
+        """Apply ``u`` to the stored profile and emit it.
+
+        With ``finished`` the stage is marked done under the same lock, so ``ensure()``
+        never sees a stage that is done but whose result is not applied yet.
+        """
         with self._lock:
+            key = (u.game_id, u.slot, u.stage)
+            if finished and key in self._stages:
+                self._stages[key] = "done"
             if u.slot == TEAM_SLOT:
                 if u.data is not None:
                     self._team[u.game_id] = u.data
@@ -190,13 +198,15 @@ class LookupPipeline(QObject):
         self.update.emit(u)
 
     def _submit(self, game_id: int, slot: int, stage: Stage, fn: Callable, *args: Any) -> None:
+        """Run ``fn(ctx, *args)`` on the executor, ``ctx`` being this game's context."""
         key = (game_id, slot, stage)
         with self._lock:
-            if not self._is_current(game_id) or key in self._stages:
+            ctx = self._ctx
+            if not self._is_current(game_id) or ctx is None or key in self._stages:
                 return
             self._stages[key] = "running"
             try:
-                fut = self._executor.submit(self._run, game_id, slot, stage, fn, args)
+                fut = self._executor.submit(self._run, game_id, slot, stage, fn, (ctx, *args))
             except RuntimeError:  # executor shut down
                 return
             self._futures.append(fut)
@@ -213,10 +223,7 @@ class LookupPipeline(QObject):
         except Exception as e:
             err = f"{type(e).__name__}: {e}"
             logger.opt(exception=True).warning(f"lookup {stage} slot {slot} crashed: {err}")
-        with self._lock:
-            if (game_id, slot, stage) in self._stages:
-                self._stages[(game_id, slot, stage)] = "done"
-        self._emit(LookupUpdate(game_id, slot, stage, data, err))
+        self._emit(LookupUpdate(game_id, slot, stage, data, err), finished=True)
         if self._is_current(game_id):
             self._after(game_id, slot, stage, data, err)
 
@@ -247,7 +254,12 @@ class LookupPipeline(QObject):
 
     def _maybe_team(self, game_id: int) -> None:
         ctx = self._ctx
-        if ctx is None or ctx.mode in ("1v1", "other") or len(ctx.opponents) < 2:
+        if (
+            ctx is None
+            or ctx.game_id != game_id
+            or ctx.mode in ("1v1", "other")
+            or len(ctx.opponents) < 2
+        ):
             return
         with self._lock:
             done = all(
@@ -265,15 +277,8 @@ class LookupPipeline(QObject):
     def _season(self, region: str) -> int:
         return self.clients.sc2pulse.current_season(region).battlenet_id
 
-    def _profile(self, slot: int) -> OpponentProfile | None:
-        with self._lock:
-            return self._results.get(self._game_id or -1, {}).get(slot)
-
     # ---------------------------------------------------------------- stages
-    def _identity(self, slot: int) -> Identity | None:
-        ctx = self._ctx
-        if ctx is None:
-            return None
+    def _identity(self, ctx: GameContext, slot: int) -> Identity | None:
         seed = _seed(ctx.opponents[slot])
         cands = self.clients.sc2pulse.search_characters(seed.name)
         picked = matching.pick_candidate(
@@ -301,17 +306,16 @@ class LookupPipeline(QObject):
             exact_matches=len(matching.exact_name_matches(cands, seed.name)),
         )
 
-    def _rating(self, slot: int, identity: Identity) -> RatingInfo:
-        ctx = self._ctx
-        mode = ctx.mode if ctx else "1v1"
+    def _rating(self, ctx: GameContext, slot: int, identity: Identity) -> RatingInfo:
+        mode = ctx.mode
         queue = matching.queue_for(mode)
         region = identity.character.region
         season = self._season(region)
-        seed = ctx.opponents[slot] if ctx else None
+        seed = ctx.opponents[slot]
         teams = self.clients.sc2pulse.character_teams(
             [identity.character.id], queues=[queue], seasons=[season]
         )
-        team = _pick_team(teams, seed.race_code if seed else None)
+        team = _pick_team(teams, seed.race_code)
         cand = identity.candidate
         mmr = team.rating if team and team.rating else cand.rating
         league = team.league_id if team else None
@@ -346,10 +350,9 @@ class LookupPipeline(QObject):
             team=team,
         )
 
-    def _smurf(self, slot: int, identity: Identity) -> SmurfInfo:
+    def _smurf(self, ctx: GameContext, slot: int, identity: Identity) -> SmurfInfo:
         ch = identity.character
-        ctx = self._ctx
-        race_now = ctx.opponents[slot].race_code if ctx else None
+        race_now = ctx.opponents[slot].race_code
         races = [r for r, n in identity.candidate.members.race_games.items() if n > 0]
         if race_now and race_now not in races and race_now != "RANDOM":
             races.append(race_now)
@@ -399,15 +402,14 @@ class LookupPipeline(QObject):
             records=windowed_records(outs, points, now=now, season=season),
         )
 
-    def _h2h(self, slot: int, identity: Identity) -> Any:
+    def _h2h(self, ctx: GameContext, slot: int, identity: Identity) -> Any:
         if self.db is None:
             return None
         rows = self.db.rows_for(identity.character.region, identity.character.battlenet_id)
         return h2h_mod.head_to_head(rows)
 
-    def _tendencies(self, slot: int, identity: Identity) -> TendenciesInfo | None:
-        ctx = self._ctx
-        mode = ctx.mode if ctx else "1v1"
+    def _tendencies(self, ctx: GameContext, slot: int, identity: Identity) -> TendenciesInfo | None:
+        mode = ctx.mode
         page = self.clients.sc2pulse.character_matches(
             [identity.character.id], types=[matching.match_type_for(mode)], limit=25
         )
@@ -420,7 +422,7 @@ class LookupPipeline(QObject):
             avg_duration_s=matches.avg_duration(recent),
         )
 
-    def _intel(self, slot: int, identity: Identity) -> IntelInfo | None:
+    def _intel(self, ctx: GameContext, slot: int, identity: Identity) -> IntelInfo | None:
         pulse = self.clients.sc2pulse
         pro: ProPlayerEntry | None = identity.pro
         if pro is not None:
@@ -464,10 +466,7 @@ class LookupPipeline(QObject):
             return None
         return IntelInfo(pro=pro, aligulac=ali, liquipedia=lp, links=ordered)
 
-    def _team_stage(self) -> Any:
-        ctx = self._ctx
-        if ctx is None:
-            return None
+    def _team_stage(self, ctx: GameContext) -> Any:
         gid = ctx.game_id
         with self._lock:
             idents = [p.identity for p in self._results.get(gid, {}).values() if p.identity]
