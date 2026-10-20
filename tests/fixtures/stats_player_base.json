@@ -1,0 +1,35 @@
+[
+ {
+  "id": 49749,
+  "season": 66,
+  "queueType": 201,
+  "teamType": 0,
+  "playerBase": 1706008,
+  "playerCount": 95723,
+  "lowActivityPlayerCount": 50532,
+  "mediumActivityPlayerCount": 20079,
+  "highActivityPlayerCount": 25112
+ },
+ {
+  "id": 52523,
+  "season": 67,
+  "queueType": 201,
+  "teamType": 0,
+  "playerBase": 1716387,
+  "playerCount": 105365,
+  "lowActivityPlayerCount": 58724,
+  "mediumActivityPlayerCount": 21941,
+  "highActivityPlayerCount": 24700
+ },
+ {
+  "id": 56051,
+  "season": 68,
+  "queueType": 201,
+  "teamType": 0,
+  "playerBase": 1724885,
+  "playerCount": 89027,
+  "lowActivityPlayerCount": 49566,
+  "mediumActivityPlayerCount": 18586,
+  "highActivityPlayerCount": 20875
+ }
+]

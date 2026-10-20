@@ -1,33 +1,48 @@
-# smurfsniper/logger.py
+"""Logging setup.
+
+Import ``logger`` anywhere. Nothing is configured at import time (no sinks are
+added and no directories are created); the CLI calls ``setup_logging`` once at
+startup.
+"""
+
+from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 from loguru import logger
 
-LOG_PATH = Path("logs")
-LOG_PATH.mkdir(exist_ok=True)
+from smurfsniper import paths
 
-logger.remove()
-
-logger.add(
-    sys.stdout,
-    colorize=True,
-    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+_CONSOLE_FORMAT = (
+    "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
     "<level>{level: <8}</level> | "
     "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-    "<level>{message}</level>",
-    level="INFO",
+    "<level>{message}</level>"
 )
+_FILE_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} - {message}"
 
-# Rotating file output
-logger.add(
-    LOG_PATH / "app.log",
-    rotation="10 MB",
-    retention="14 days",
-    compression="zip",
-    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} - {message}",
-    level="DEBUG",
-)
 
-__all__ = ["logger"]
+def setup_logging(level: str = "INFO", *, console: bool = True) -> None:
+    """Replace all sinks: a rotating file in ``user_log_dir`` plus optional console.
+
+    The console sink is skipped when ``sys.stderr`` is None (windowed exe).
+    """
+    logger.remove()
+    if console and sys.stderr is not None:
+        logger.add(sys.stderr, colorize=True, format=_CONSOLE_FORMAT, level=level)
+    try:
+        paths.log_dir().mkdir(parents=True, exist_ok=True)
+        logger.add(
+            paths.log_file(),
+            rotation="10 MB",
+            retention="14 days",
+            compression="zip",
+            format=_FILE_FORMAT,
+            level="DEBUG",
+            enqueue=True,
+        )
+    except OSError as e:  # read-only profile etc.: keep running with console only
+        logger.warning(f"File logging disabled: {e}")
+
+
+__all__ = ["logger", "setup_logging"]

@@ -1,0 +1,288 @@
+{
+ "streams": [
+  {
+   "stream": {
+    "service": "TWITCH",
+    "id": "318407662424",
+    "userId": "21327052",
+    "userName": "ninasc2",
+    "title": "Last Remaining NA PROTOSS Hope!",
+    "url": "https://www.twitch.tv/ninasc2",
+    "profileImageUrl": "https://static-cdn.jtvnw.net/jtv_user_pictures/de913468-953b-4734-b522-747afbcf5449-profile_image-50x50.png",
+    "thumbnailUrl": "https://static-cdn.jtvnw.net/previews-ttv/live_user_ninasc2-440x248.jpg",
+    "language": "en",
+    "viewerCount": 176
+   },
+   "proPlayer": {
+    "proPlayer": {
+     "id": 77,
+     "aligulacId": 317,
+     "nickname": "Nina",
+     "name": "Alison Qual",
+     "country": "US",
+     "birthday": "1990-08-15",
+     "earnings": 103590,
+     "updated": "2025-08-24T04:00:07.660064Z",
+     "version": 10
+    },
+    "proTeam": null,
+    "links": [
+     {
+      "proPlayerId": 77,
+      "type": "ALIGULAC",
+      "url": "http://aligulac.com/players/317",
+      "updated": "2023-08-15T04:00:09.654178Z",
+      "serviceUserId": null,
+      "protected": false
+     },
+     {
+      "proPlayerId": 77,
+      "type": "TWITCH",
+      "url": "https://www.twitch.tv/ninasc2",
+      "updated": "2023-08-15T04:03:32.114505Z",
+      "serviceUserId": "21327052",
+      "protected": false
+     },
+     {
+      "proPlayerId": 77,
+      "type": "LIQUIPEDIA",
+      "url": "https://liquipedia.net/starcraft2/puCK",
+      "updated": "2023-08-15T04:00:09.654179Z",
+      "serviceUserId": null,
+      "protected": false
+     },
+     {
+      "proPlayerId": 77,
+      "type": "TWITTER",
+      "url": "https://twitter.com/Neenzk61",
+      "updated": "2023-08-15T04:03:32.114505Z",
+      "serviceUserId": null,
+      "protected": false
+     },
+     {
+      "proPlayerId": 77,
+      "type": "INSTAGRAM",
+      "url": "https://www.instagram.com/neenzk61",
+      "updated": "2023-08-15T04:03:32.114506Z",
+      "serviceUserId": null,
+      "protected": false
+     },
+     {
+      "proPlayerId": 77,
+      "type": "YOUTUBE",
+      "url": "https://www.youtube.com/channel/UCXCW05y0CgxoJX_ejm6U-Iw/featured",
+      "updated": "2023-08-15T04:03:32.114504Z",
+      "serviceUserId": null,
+      "protected": false
+     }
+    ]
+   },
+   "team": {
+    "rating": 5884,
+    "wins": 122,
+    "losses": 30,
+    "ties": 0,
+    "id": 275226350,
+    "legacyId": "1.2553612.2",
+    "divisionId": 2844947,
+    "season": 68,
+    "region": "US",
+    "league": {
+     "type": 6,
+     "queueType": 201,
+     "teamType": 0
+    },
+    "tierType": 0,
+    "globalRank": 142,
+    "regionRank": 17,
+    "leagueRank": 3,
+    "lastPlayed": "2026-10-20T01:27:02Z",
+    "joined": "2026-10-14T03:59:38Z",
+    "primaryDataUpdated": "2026-10-20T01:32:35.424205Z",
+    "members": [
+     {
+      "protossGamesPlayed": 152,
+      "character": {
+       "realm": 1,
+       "name": "Ali#1631",
+       "id": 108307,
+       "accountId": 321052189,
+       "region": "US",
+       "battlenetId": 2553612,
+       "tag": "Ali",
+       "discriminator": 1631
+      },
+      "account": {
+       "battleTag": "Nina#12671",
+       "id": 321052189,
+       "partition": "GLOBAL",
+       "hidden": null,
+       "tag": "Nina",
+       "discriminator": 12671
+      },
+      "clan": {
+       "tag": "KRKTWN",
+       "id": 65476,
+       "region": "US",
+       "name": "Kirktown",
+       "members": 43,
+       "activeMembers": 25,
+       "avgRating": 3565,
+       "avgLeagueType": 4,
+       "games": 2316
+      },
+      "proId": 77,
+      "proNickname": "Nina",
+      "proPlayer": {
+       "proPlayer": {
+        "id": 77,
+        "aligulacId": null,
+        "nickname": "Nina",
+        "name": null,
+        "country": null,
+        "birthday": null,
+        "earnings": null,
+        "updated": null,
+        "version": null
+       },
+       "proTeam": null,
+       "links": []
+      },
+      "raceGames": {
+       "PROTOSS": 152
+      }
+     }
+    ],
+    "globalTeamCount": 131479,
+    "regionTeamCount": 62165,
+    "leagueTeamCount": 188,
+    "queueType": 201,
+    "teamType": 0,
+    "leagueType": 6,
+    "legacyUid": "201-0-1-1.2553612.2"
+   },
+   "featured": null
+  },
+  {
+   "stream": {
+    "service": "TWITCH",
+    "id": "322043972059",
+    "userId": "44407164",
+    "userName": "KristaFoFista",
+    "title": "Mech Mommy Monday",
+    "url": "https://www.twitch.tv/kristafofista",
+    "profileImageUrl": "https://static-cdn.jtvnw.net/jtv_user_pictures/54f77050-9eb7-4e85-911d-773bcaafd696-profile_image-50x50.png",
+    "thumbnailUrl": "https://static-cdn.jtvnw.net/previews-ttv/live_user_kristafofista-440x248.jpg",
+    "language": "en",
+    "viewerCount": 29
+   },
+   "proPlayer": {
+    "proPlayer": {
+     "id": 518245,
+     "aligulacId": null,
+     "nickname": "KristaFoFista",
+     "name": null,
+     "country": "US",
+     "birthday": null,
+     "earnings": null,
+     "updated": "2025-01-24T10:17:05.805745Z",
+     "version": 3
+    },
+    "proTeam": null,
+    "links": [
+     {
+      "proPlayerId": 518245,
+      "type": "TWITCH",
+      "url": "https://www.twitch.tv/kristafofista",
+      "updated": "2025-01-24T10:17:05.575962Z",
+      "serviceUserId": "44407164",
+      "protected": false
+     },
+     {
+      "proPlayerId": 518245,
+      "type": "INSTAGRAM",
+      "url": "https://www.instagram.com/lakewoodlola/",
+      "updated": "2025-01-24T10:17:05.575958Z",
+      "serviceUserId": null,
+      "protected": false
+     }
+    ]
+   },
+   "team": {
+    "rating": 3087,
+    "wins": 31,
+    "losses": 34,
+    "ties": 0,
+    "id": 275194788,
+    "legacyId": "1.4998755.1",
+    "divisionId": 2844535,
+    "season": 68,
+    "region": "US",
+    "league": {
+     "type": 4,
+     "queueType": 201,
+     "teamType": 0
+    },
+    "tierType": 2,
+    "globalRank": 36749,
+    "regionRank": 16324,
+    "leagueRank": 11348,
+    "lastPlayed": "2026-10-20T01:34:34Z",
+    "joined": "2026-07-20T22:42:10Z",
+    "primaryDataUpdated": "2026-10-20T01:36:05.815792Z",
+    "members": [
+     {
+      "terranGamesPlayed": 65,
+      "character": {
+       "realm": 1,
+       "name": "MechMommy#398",
+       "id": 1437340,
+       "accountId": 1437340,
+       "region": "US",
+       "battlenetId": 4998755,
+       "tag": "MechMommy",
+       "discriminator": 398
+      },
+      "account": {
+       "battleTag": "Terranasuar#1417",
+       "id": 1437340,
+       "partition": "GLOBAL",
+       "hidden": null,
+       "tag": "Terranasuar",
+       "discriminator": 1417
+      },
+      "proId": 518245,
+      "proNickname": "KristaFoFista",
+      "proPlayer": {
+       "proPlayer": {
+        "id": 518245,
+        "aligulacId": null,
+        "nickname": "KristaFoFista",
+        "name": null,
+        "country": null,
+        "birthday": null,
+        "earnings": null,
+        "updated": null,
+        "version": null
+       },
+       "proTeam": null,
+       "links": []
+      },
+      "raceGames": {
+       "TERRAN": 65
+      }
+     }
+    ],
+    "globalTeamCount": 131479,
+    "regionTeamCount": 62165,
+    "leagueTeamCount": 13149,
+    "queueType": 201,
+    "teamType": 0,
+    "leagueType": 4,
+    "legacyUid": "201-0-1-1.4998755.1"
+   },
+   "featured": null
+  }
+ ],
+ "errors": []
+}

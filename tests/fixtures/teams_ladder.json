@@ -1,0 +1,233 @@
+{
+ "result": [
+  {
+   "rating": 8127,
+   "wins": 37,
+   "losses": 0,
+   "ties": 0,
+   "id": 275396531,
+   "legacyId": "1.11355642.4",
+   "divisionId": 2844937,
+   "season": 68,
+   "region": "EU",
+   "league": {
+    "type": 6,
+    "queueType": 201,
+    "teamType": 0
+   },
+   "tierType": 0,
+   "globalRank": 2,
+   "regionRank": 2,
+   "leagueRank": 1,
+   "lastPlayed": "2026-10-13T16:31:39Z",
+   "joined": "2026-10-13T19:59:34Z",
+   "primaryDataUpdated": "2026-10-13T20:04:40.541868Z",
+   "members": [
+    {
+     "randomGamesPlayed": 37,
+     "character": {
+      "realm": 1,
+      "name": "\u0413\u043e\u043b\u043e\u0432\u0430\u0447\u041b\u0435\u043d\u0430#430",
+      "id": 341427506,
+      "accountId": 321489851,
+      "region": "EU",
+      "battlenetId": 11355642,
+      "tag": "\u0413\u043e\u043b\u043e\u0432\u0430\u0447\u041b\u0435\u043d\u0430",
+      "discriminator": 430
+     },
+     "account": {
+      "battleTag": "\u0410\u0411\u041e\u0411\u0423\u0421#2721",
+      "id": 321489851,
+      "partition": "GLOBAL",
+      "hidden": null,
+      "tag": "\u0410\u0411\u041e\u0411\u0423\u0421",
+      "discriminator": 2721
+     },
+     "clan": {
+      "tag": "MINDEL",
+      "id": 127866,
+      "region": "EU",
+      "name": "\u041e\u0444\u0438\u0446\u0438\u0430\u043b\u044c\u043d\u044b\u0439 \u041c\u0438\u043d\u0434\u0435\u043b\u044c\u0412\u041a \u043a\u043b\u0430\u043d",
+      "members": null,
+      "activeMembers": null,
+      "avgRating": null,
+      "avgLeagueType": null,
+      "games": null
+     },
+     "raceGames": {
+      "RANDOM": 37
+     }
+    }
+   ],
+   "globalTeamCount": 131480,
+   "regionTeamCount": 54165,
+   "leagueTeamCount": 207,
+   "queueType": 201,
+   "teamType": 0,
+   "leagueType": 6,
+   "legacyUid": "201-0-2-1.11355642.4"
+  },
+  {
+   "rating": 7134,
+   "wins": 32,
+   "losses": 69,
+   "ties": 0,
+   "id": 275392296,
+   "legacyId": "1.11353703.4",
+   "divisionId": 2844937,
+   "season": 68,
+   "region": "EU",
+   "league": {
+    "type": 6,
+    "queueType": 201,
+    "teamType": 0
+   },
+   "tierType": 0,
+   "globalRank": 4,
+   "regionRank": 4,
+   "leagueRank": 2,
+   "lastPlayed": "2026-10-15T09:29:54Z",
+   "joined": "2026-10-15T19:59:37Z",
+   "primaryDataUpdated": "2026-10-15T20:03:48.480542Z",
+   "members": [
+    {
+     "randomGamesPlayed": 101,
+     "character": {
+      "realm": 1,
+      "name": "\u0401\u0411H\u0423T\u042b\u0419#972",
+      "id": 341426790,
+      "accountId": 321489212,
+      "region": "EU",
+      "battlenetId": 11353703,
+      "tag": "\u0401\u0411H\u0423T\u042b\u0419",
+      "discriminator": 972
+     },
+     "account": {
+      "battleTag": "\u0410\u0411\u041e\u0411\u0423\u0421#2978",
+      "id": 321489212,
+      "partition": "GLOBAL",
+      "hidden": null,
+      "tag": "\u0410\u0411\u041e\u0411\u0423\u0421",
+      "discriminator": 2978
+     },
+     "clan": {
+      "tag": "\u0411PA\u0422O\u041a",
+      "id": 137819,
+      "region": "EU",
+      "name": "\u0411\u0420\u0410\u0422\u041e\u041a \u0413\u0415\u0419",
+      "members": null,
+      "activeMembers": null,
+      "avgRating": null,
+      "avgLeagueType": null,
+      "games": null
+     },
+     "raceGames": {
+      "RANDOM": 101
+     }
+    }
+   ],
+   "globalTeamCount": 131480,
+   "regionTeamCount": 54165,
+   "leagueTeamCount": 207,
+   "queueType": 201,
+   "teamType": 0,
+   "leagueType": 6,
+   "legacyUid": "201-0-2-1.11353703.4"
+  },
+  {
+   "rating": 6495,
+   "wins": 135,
+   "losses": 58,
+   "ties": 0,
+   "id": 275190384,
+   "legacyId": "1.3167602.2",
+   "divisionId": 2844937,
+   "season": 68,
+   "region": "EU",
+   "league": {
+    "type": 6,
+    "queueType": 201,
+    "teamType": 0
+   },
+   "tierType": 0,
+   "globalRank": 16,
+   "regionRank": 14,
+   "leagueRank": 3,
+   "lastPlayed": "2026-10-19T14:58:59Z",
+   "joined": "2026-10-15T19:59:37Z",
+   "primaryDataUpdated": "2026-10-19T15:01:47.549649Z",
+   "members": [
+    {
+     "protossGamesPlayed": 193,
+     "character": {
+      "realm": 1,
+      "name": "MaxPax#536",
+      "id": 196950,
+      "accountId": 196950,
+      "region": "EU",
+      "battlenetId": 3167602,
+      "tag": "MaxPax",
+      "discriminator": 536
+     },
+     "account": {
+      "battleTag": "MaxPax#2342",
+      "id": 196950,
+      "partition": "GLOBAL",
+      "hidden": null,
+      "tag": "MaxPax",
+      "discriminator": 2342
+     },
+     "clan": {
+      "tag": "PSISTM",
+      "id": 3392,
+      "region": "EU",
+      "name": "PSISTORM Gaming",
+      "members": 27,
+      "activeMembers": 8,
+      "avgRating": 5189,
+      "avgLeagueType": 5,
+      "games": 259
+     },
+     "proId": 517228,
+     "proNickname": "MaxPax",
+     "proTeam": "PSISTM",
+     "proPlayer": {
+      "proPlayer": {
+       "id": 517228,
+       "aligulacId": null,
+       "nickname": "MaxPax",
+       "name": null,
+       "country": null,
+       "birthday": null,
+       "earnings": null,
+       "updated": null,
+       "version": null
+      },
+      "proTeam": {
+       "name": null,
+       "shortName": "PSISTM",
+       "id": null,
+       "aligulacId": null,
+       "updated": null
+      },
+      "links": []
+     },
+     "raceGames": {
+      "PROTOSS": 193
+     }
+    }
+   ],
+   "globalTeamCount": 131480,
+   "regionTeamCount": 54165,
+   "leagueTeamCount": 207,
+   "queueType": 201,
+   "teamType": 0,
+   "leagueType": 6,
+   "legacyUid": "201-0-2-1.3167602.2"
+  }
+ ],
+ "navigation": {
+  "before": null,
+  "after": "eyJ2IjoxLCJhIjpbNTA2OSwyNzUzNDEzNThdfQ"
+ }
+}

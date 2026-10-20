@@ -13,7 +13,7 @@ from smurfsniper._version import __version__ as VERSION
 from smurfsniper.config_paths import resolve_config
 from smurfsniper.models.config import Config, Preferences
 
-DEFAULT_URL = "http://localhost:6119/game"
+DEFAULT_URL = "http://localhost:6119"
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -69,6 +69,16 @@ def load_and_validate_config(
         raise click.ClickException(f"Config validation failed: {e}") from e
 
 
+def masked_dump(config: Config) -> dict[str, Any]:
+    """``model_dump`` with secrets masked (``****abcd``)."""
+    data = config.model_dump()
+    aligulac = ((data.get("integrations") or {}).get("aligulac")) or {}
+    key = aligulac.get("api_key")
+    if key:
+        aligulac["api_key"] = "****" + key[-4:]
+    return data
+
+
 def run_service(
     *,
     url: str,
@@ -76,17 +86,13 @@ def run_service(
     config: Config,
     app=None,
 ) -> None:
-    click.echo("Service starting with config:")
-    click.echo(yaml.dump(config.model_dump(), sort_keys=False))
+    from smurfsniper.logger import logger
 
-    click.echo(f"Using SC2 game API: {url}")
-    click.echo("Running service loop (ctrl+c to exit)")
+    logger.info(f"Config: {config_path}")
+    logger.debug(yaml.dump(masked_dump(config), sort_keys=False))
+    logger.info(f"Using SC2 client API: {url} (ctrl+c to exit)")
 
-    service.main(
-        url=url,
-        config_file_path=str(config_path),
-        app=app,
-    )
+    raise SystemExit(service.main(url=url, config=config, app=app))
 
 
 @click.group(
@@ -118,7 +124,7 @@ def cli(ctx: click.Context) -> None:
     "--url",
     default=DEFAULT_URL,
     show_default=True,
-    help="SC2 game API endpoint",
+    help="SC2 client API base URL (a trailing /game is accepted)",
 )
 @click.option(
     "--headless",
@@ -147,6 +153,11 @@ def run(
     """
     Run the SmurfSniper service.
     """
+    from smurfsniper import paths
+    from smurfsniper.logger import setup_logging
+
+    paths.ensure_dirs()
+    setup_logging("INFO", console=True)
     load_path, write_path = resolve_config(config_path)
 
     if headless:
@@ -237,7 +248,7 @@ def validate(
 
     if show:
         click.echo()
-        click.echo(yaml.dump(config.model_dump(), sort_keys=False))
+        click.echo(yaml.dump(masked_dump(config), sort_keys=False))
 
 
 def _discover_modules() -> list[str]:

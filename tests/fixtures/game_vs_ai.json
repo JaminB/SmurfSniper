@@ -1,0 +1,8 @@
+{
+  "isReplay": false,
+  "displayTime": 40.0,
+  "players": [
+    {"id": 1, "name": "Me", "type": "user", "race": "Prot", "result": "Undecided"},
+    {"id": 2, "name": "A.I. 1 (Very Easy)", "type": "computer", "race": "random", "result": "Undecided"}
+  ]
+}

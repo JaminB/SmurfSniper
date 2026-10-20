@@ -1,0 +1,1065 @@
+{
+ "maps": {
+  "55376": {
+   "id": 55376,
+   "name": "At Eternity's Edge LE"
+  },
+  "55377": {
+   "id": 55377,
+   "name": "Washout LE"
+  },
+  "55378": {
+   "id": 55378,
+   "name": "Rorschach LE"
+  },
+  "55370": {
+   "id": 55370,
+   "name": "Lockdown LE"
+  },
+  "55371": {
+   "id": 55371,
+   "name": "Sanctuary III LE"
+  },
+  "55372": {
+   "id": 55372,
+   "name": "Rainfall LE"
+  },
+  "55373": {
+   "id": 55373,
+   "name": "Blackrock LE"
+  },
+  "55374": {
+   "id": 55374,
+   "name": "Old Sun Temple LE"
+  },
+  "55375": {
+   "id": 55375,
+   "name": "Fear and Faith LE"
+  }
+ },
+ "seasons": {
+  "143826": {
+   "number": 3,
+   "year": 2026,
+   "start": "2026-07-19T06:00:00Z",
+   "end": "2026-11-10T00:00:00Z",
+   "id": 143826,
+   "battlenetId": 68,
+   "region": "EU"
+  }
+ },
+ "leagues": {
+  "4237434": {
+   "type": 6,
+   "queueType": 201,
+   "teamType": 0,
+   "id": 4237434,
+   "seasonId": 143826
+  }
+ },
+ "tiers": {
+  "11998568": {
+   "type": 0,
+   "minRating": 0,
+   "maxRating": 0,
+   "id": 11998568,
+   "leagueId": 4237434
+  }
+ },
+ "specs": {
+  "1": {
+   "id": 1,
+   "race": "RANDOM",
+   "versusRace": "TERRAN",
+   "frameDuration": "PT1M"
+  }
+ },
+ "films": {
+  "78599": {
+   "id": 78599,
+   "mapId": 55376,
+   "leagueTierId": 11998568,
+   "mapStatsFilmSpecId": 6,
+   "crossTier": true
+  },
+  "79882": {
+   "id": 79882,
+   "mapId": 55378,
+   "leagueTierId": 11998568,
+   "mapStatsFilmSpecId": 4,
+   "crossTier": false
+  },
+  "79895": {
+   "id": 79895,
+   "mapId": 55370,
+   "leagueTierId": 11998568,
+   "mapStatsFilmSpecId": 4,
+   "crossTier": false
+  },
+  "82198": {
+   "id": 82198,
+   "mapId": 55374,
+   "leagueTierId": 11998568,
+   "mapStatsFilmSpecId": 1,
+   "crossTier": true
+  },
+  "81434": {
+   "id": 81434,
+   "mapId": 55374,
+   "leagueTierId": 11998568,
+   "mapStatsFilmSpecId": 5,
+   "crossTier": true
+  },
+  "82205": {
+   "id": 82205,
+   "mapId": 55370,
+   "leagueTierId": 11998568,
+   "mapStatsFilmSpecId": 2,
+   "crossTier": false
+  },
+  "82204": {
+   "id": 82204,
+   "mapId": 55378,
+   "leagueTierId": 11998568,
+   "mapStatsFilmSpecId": 1,
+   "crossTier": true
+  },
+  "81951": {
+   "id": 81951,
+   "mapId": 55377,
+   "leagueTierId": 11998568,
+   "mapStatsFilmSpecId": 3,
+   "crossTier": true
+  },
+  "82206": {
+   "id": 82206,
+   "mapId": 55371,
+   "leagueTierId": 11998568,
+   "mapStatsFilmSpecId": 1,
+   "crossTier": true
+  },
+  "82209": {
+   "id": 82209,
+   "mapId": 55372,
+   "leagueTierId": 11998568,
+   "mapStatsFilmSpecId": 1,
+   "crossTier": true
+  },
+  "82210": {
+   "id": 82210,
+   "mapId": 55372,
+   "leagueTierId": 11998568,
+   "mapStatsFilmSpecId": 3,
+   "crossTier": true
+  },
+  "82213": {
+   "id": 82213,
+   "mapId": 55376,
+   "leagueTierId": 11998568,
+   "mapStatsFilmSpecId": 1,
+   "crossTier": true
+  }
+ },
+ "frames": [
+  {
+   "mapStatsFilmId": 78599,
+   "number": null,
+   "wins": 3,
+   "games": 7
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 0,
+   "wins": 3,
+   "games": 10
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 1,
+   "wins": 0,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 2,
+   "wins": 4,
+   "games": 6
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 3,
+   "wins": 3,
+   "games": 4
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 4,
+   "wins": 6,
+   "games": 8
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 5,
+   "wins": 2,
+   "games": 3
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 6,
+   "wins": 4,
+   "games": 13
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 7,
+   "wins": 3,
+   "games": 10
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 8,
+   "wins": 6,
+   "games": 11
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 9,
+   "wins": 4,
+   "games": 13
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 10,
+   "wins": 12,
+   "games": 22
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 11,
+   "wins": 4,
+   "games": 9
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 12,
+   "wins": 4,
+   "games": 10
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 13,
+   "wins": 6,
+   "games": 10
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 14,
+   "wins": 1,
+   "games": 5
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 15,
+   "wins": 3,
+   "games": 7
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 16,
+   "wins": 1,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 17,
+   "wins": 1,
+   "games": 3
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 18,
+   "wins": 0,
+   "games": 5
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 19,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 20,
+   "wins": 2,
+   "games": 3
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 21,
+   "wins": 1,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 22,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 23,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 24,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 26,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 28,
+   "wins": 0,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 33,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 35,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 78599,
+   "number": 60,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": null,
+   "wins": 1,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 0,
+   "wins": 0,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 1,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 2,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 5,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 7,
+   "wins": 1,
+   "games": 3
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 8,
+   "wins": 2,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 9,
+   "wins": 4,
+   "games": 6
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 10,
+   "wins": 4,
+   "games": 7
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 11,
+   "wins": 3,
+   "games": 5
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 12,
+   "wins": 1,
+   "games": 5
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 13,
+   "wins": 1,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 14,
+   "wins": 3,
+   "games": 5
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 15,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 16,
+   "wins": 2,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 17,
+   "wins": 0,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 18,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 19,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 21,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 22,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 23,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 25,
+   "wins": 1,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 26,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 27,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 28,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79882,
+   "number": 41,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": null,
+   "wins": 2,
+   "games": 4
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 0,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 3,
+   "wins": 1,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 4,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 6,
+   "wins": 2,
+   "games": 3
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 7,
+   "wins": 2,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 8,
+   "wins": 5,
+   "games": 5
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 9,
+   "wins": 2,
+   "games": 5
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 10,
+   "wins": 1,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 11,
+   "wins": 2,
+   "games": 5
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 12,
+   "wins": 3,
+   "games": 5
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 13,
+   "wins": 1,
+   "games": 7
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 14,
+   "wins": 2,
+   "games": 5
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 15,
+   "wins": 4,
+   "games": 7
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 16,
+   "wins": 1,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 17,
+   "wins": 4,
+   "games": 6
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 18,
+   "wins": 0,
+   "games": 5
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 19,
+   "wins": 3,
+   "games": 8
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 20,
+   "wins": 1,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 21,
+   "wins": 3,
+   "games": 4
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 22,
+   "wins": 2,
+   "games": 4
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 23,
+   "wins": 3,
+   "games": 3
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 24,
+   "wins": 1,
+   "games": 5
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 25,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 26,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 27,
+   "wins": 1,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 79895,
+   "number": 38,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": null,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 0,
+   "wins": 2,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 1,
+   "wins": 1,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 2,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 4,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 5,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 6,
+   "wins": 0,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 7,
+   "wins": 6,
+   "games": 8
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 8,
+   "wins": 0,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 9,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 10,
+   "wins": 1,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 11,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 12,
+   "wins": 0,
+   "games": 3
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 13,
+   "wins": 1,
+   "games": 3
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 14,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 15,
+   "wins": 0,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 16,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 17,
+   "wins": 1,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 18,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 20,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 23,
+   "wins": 2,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 26,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 37,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81434,
+   "number": 82,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81951,
+   "number": 8,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81951,
+   "number": 9,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81951,
+   "number": 12,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81951,
+   "number": 15,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81951,
+   "number": 16,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 81951,
+   "number": 23,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82198,
+   "number": null,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82204,
+   "number": null,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82204,
+   "number": 0,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82204,
+   "number": 5,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82204,
+   "number": 6,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82204,
+   "number": 8,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82204,
+   "number": 10,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82204,
+   "number": 13,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82204,
+   "number": 14,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82205,
+   "number": null,
+   "wins": 2,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 82205,
+   "number": 0,
+   "wins": 2,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 82205,
+   "number": 1,
+   "wins": 3,
+   "games": 3
+  },
+  {
+   "mapStatsFilmId": 82205,
+   "number": 26,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82206,
+   "number": null,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82206,
+   "number": 0,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82206,
+   "number": 4,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82206,
+   "number": 5,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82206,
+   "number": 6,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82209,
+   "number": null,
+   "wins": 1,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 82209,
+   "number": 0,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82209,
+   "number": 4,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82209,
+   "number": 5,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82209,
+   "number": 6,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82209,
+   "number": 7,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82209,
+   "number": 9,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82209,
+   "number": 12,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82209,
+   "number": 15,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82210,
+   "number": null,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82210,
+   "number": 0,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82210,
+   "number": 3,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82210,
+   "number": 5,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82210,
+   "number": 17,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82210,
+   "number": 18,
+   "wins": 0,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82210,
+   "number": 22,
+   "wins": 1,
+   "games": 1
+  },
+  {
+   "mapStatsFilmId": 82213,
+   "number": 1,
+   "wins": 2,
+   "games": 2
+  },
+  {
+   "mapStatsFilmId": 82213,
+   "number": 2,
+   "wins": 1,
+   "games": 1
+  }
+ ]
+}

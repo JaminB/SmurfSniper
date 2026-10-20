@@ -1,0 +1,148 @@
+[
+ {
+  "rating": 4988,
+  "wins": 294,
+  "losses": 210,
+  "ties": 0,
+  "id": 275224659,
+  "legacyId": "1.629281.1",
+  "divisionId": 2844947,
+  "season": 68,
+  "region": "US",
+  "league": {
+   "type": 6,
+   "queueType": 201,
+   "teamType": 0
+  },
+  "tierType": 0,
+  "globalRank": 1281,
+  "regionRank": 352,
+  "leagueRank": 82,
+  "lastPlayed": "2026-10-20T01:41:06Z",
+  "joined": "2026-08-02T03:59:39Z",
+  "primaryDataUpdated": "2026-10-20T01:43:32.917584Z",
+  "members": [
+   {
+    "terranGamesPlayed": 504,
+    "character": {
+     "realm": 1,
+     "name": "Haste#836",
+     "id": 968008,
+     "accountId": 968008,
+     "region": "US",
+     "battlenetId": 629281,
+     "tag": "Haste",
+     "discriminator": 836
+    },
+    "account": {
+     "battleTag": "Haste#1173",
+     "id": 968008,
+     "partition": "GLOBAL",
+     "hidden": null,
+     "tag": "Haste",
+     "discriminator": 1173
+    },
+    "proId": 517309,
+    "proNickname": "Haste",
+    "proPlayer": {
+     "proPlayer": {
+      "id": 517309,
+      "aligulacId": null,
+      "nickname": "Haste",
+      "name": null,
+      "country": null,
+      "birthday": null,
+      "earnings": null,
+      "updated": null,
+      "version": null
+     },
+     "proTeam": null,
+     "links": []
+    },
+    "raceGames": {
+     "TERRAN": 504
+    }
+   }
+  ],
+  "globalTeamCount": 131480,
+  "regionTeamCount": 62166,
+  "leagueTeamCount": 188,
+  "queueType": 201,
+  "teamType": 0,
+  "leagueType": 6,
+  "legacyUid": "201-0-1-1.629281.1"
+ },
+ {
+  "rating": 4832,
+  "wins": 267,
+  "losses": 228,
+  "ties": 0,
+  "id": 275388154,
+  "legacyId": "1.3866696.1",
+  "divisionId": 2844947,
+  "season": 68,
+  "region": "US",
+  "league": {
+   "type": 6,
+   "queueType": 201,
+   "teamType": 0
+  },
+  "tierType": 0,
+  "globalRank": 1739,
+  "regionRank": 520,
+  "leagueRank": 115,
+  "lastPlayed": "2026-10-20T01:40:43Z",
+  "joined": "2026-10-10T03:59:39Z",
+  "primaryDataUpdated": "2026-10-20T01:43:32.918233Z",
+  "members": [
+   {
+    "terranGamesPlayed": 495,
+    "character": {
+     "realm": 1,
+     "name": "Jamby#184",
+     "id": 340700118,
+     "accountId": 320848455,
+     "region": "US",
+     "battlenetId": 3866696,
+     "tag": "Jamby",
+     "discriminator": 184
+    },
+    "account": {
+     "battleTag": "DeadlyKitten#1252210",
+     "id": 320848455,
+     "partition": "GLOBAL",
+     "hidden": null,
+     "tag": "DeadlyKitten",
+     "discriminator": 1252210
+    },
+    "proId": 518039,
+    "proNickname": "Jamby",
+    "proPlayer": {
+     "proPlayer": {
+      "id": 518039,
+      "aligulacId": null,
+      "nickname": "Jamby",
+      "name": null,
+      "country": null,
+      "birthday": null,
+      "earnings": null,
+      "updated": null,
+      "version": null
+     },
+     "proTeam": null,
+     "links": []
+    },
+    "raceGames": {
+     "TERRAN": 495
+    }
+   }
+  ],
+  "globalTeamCount": 131480,
+  "regionTeamCount": 62166,
+  "leagueTeamCount": 188,
+  "queueType": 201,
+  "teamType": 0,
+  "leagueType": 6,
+  "legacyUid": "201-0-1-1.3866696.1"
+ }
+]

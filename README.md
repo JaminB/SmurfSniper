@@ -38,20 +38,29 @@ time you queue into them you see your head-to-head history at a glance.
 ## Features
 
 ### Real-time match detection
-- Polls the **local SC2 client API** (`http://localhost:6119/game`) every **5 seconds**.
-- Detects new games and the match **format** automatically.
+- Polls the **local SC2 client API** (`http://localhost:6119`, `/ui` and `/game`) every
+  **1.5 seconds** on a background thread, so the overlay never freezes.
+- Tracks the client state (menu, loading, in game, replay, score screen), so an immediate
+  **rematch** against the same player is detected, **replays** and **vs-AI** games trigger no
+  lookups, and the game result is logged once within ~1.5 s of the game ending.
+- When SC2 is closed it logs a single "SC2 client offline" line and polls every 10 s.
 - Supports ranked **1v1**, **2v2**, and team (**3v3 / 4v4**) games.
 
 ### Opponent intelligence (SC2Pulse)
-- Looks up each opponent's ladder profile, teams, and full MMR history.
-- Filters candidate accounts to a **±500 MMR window** around your own (`me.mmr`) for accurate
-  matching.
-- Resolves race, max league reached, account age, total games, and most-played race.
+- Looks up each opponent's ladder profile, current-season team, league and tier, regional
+  rank, peak MMR, full rating history and recent matches.
+- Candidates must match the in-game name exactly; they are ranked by your **±500 MMR window**
+  (`me.mmr`, widened to ±1000 if nobody fits), the race seen in game and recent activity.
+- Lookups run in stages and the overlay appears as soon as identity, rating and history are in.
+- Responses are cached in memory and on disk (SQLite) with per-endpoint lifetimes, so a
+  rematch or a hotkey never re-downloads what was already fetched. A cold 1v1 lookup costs at
+  most 7 SC2Pulse requests; a warm one costs none.
 
 ### MMR & form analysis
-- **MMR trend** via linear regression over the last **100 games** (rising / falling).
-- **Sparklines** (`▁▂▃▄▅▆▇█`) summarizing recent MMR movement.
-- **Win/loss windows** for the last **1 day, 3 days, 7 days, 30 days, and lifetime**.
+- **MMR trend** via linear regression (MMR per day) over the last **100 rating points**.
+- **Sparklines** (`▁▂▃▄▅▆▇█`) summarizing the last 30 days of MMR movement.
+- **Win/loss windows** for the last **3 days, 7 days, 30 days and the current season**, counted
+  from SC2Pulse's real win and game counters (only windows with games are shown).
 
 ### Smurf detection
 - Graded **0–100 smurf score** with human-readable reasons, mapped to a label:
@@ -70,18 +79,18 @@ time you queue into them you see your head-to-head history at a glance.
 ### Head-to-head history
 - Every opponent encounter is written to a local **SQLite** database.
 - On future runs, dedicated player-log overlays show your **record vs. that opponent**.
-- Detects and surfaces an opponent's **frequent teammates**.
+- Each row stores the game mode, both races, game length and your own result, and a game is
+  never logged twice. Older databases are migrated automatically.
 
-### Cross-network scouting (Ctrl+F2)
-On demand, gather a deeper scouting profile on the current opponent(s):
-- **Behavioral profile** (from their own ladder history): recent form, current win/loss
-  **streak**, **peak activity hours** with a 24-hour activity sparkline, **top maps** with
-  W-L records, and **average game length**.
-- **External footprint** when the handle is distinctive enough to be worth a public lookup:
-  **Aligulac** player page, **Liquipedia** page, **Twitch live** status, the official
-  **Battle.net** career link, self-declared **social links**, and candidate handle URLs.
-- When an opponent has an external footprint, a distinct **chime** plays and a hint appears on
-  the main overlay.
+### Scouting intel (Ctrl+F2)
+On demand, show a deeper scouting profile on the current opponent(s), using official public
+APIs only:
+- **Recent form** (last 10 results), **top maps** with W-L records and **average game length**
+  from their SC2Pulse match history.
+- **Pro details** from SC2Pulse (team, country, earnings) and the links they have registered
+  there (Liquipedia, Twitch, Aligulac, ...).
+- **Aligulac** rating and rank (needs a free API key) and the **Liquipedia** intro, looked up
+  only for revealed pros or names distinctive enough to be worth it.
 
 ### Configurable overlays
 - Frameless, transparent, **always-on-top** widgets that **auto-close** after a set duration.
@@ -89,7 +98,7 @@ On demand, gather a deeper scouting profile on the current opponent(s):
   the **external** (Ctrl+F2) overlay.
 - Per overlay: `visible`, `orientation` (horizontal / vertical), `position` (8-point screen
   anchor), `seconds_delay_before_show`, and `seconds_visible`.
-- Non-blocking rendering on a dedicated Qt UI thread.
+- Lines with no data are left out instead of showing placeholders.
 
 ### Config editor GUI
 - Double-clicking the executable (or running with no subcommand) launches a **config editor
@@ -98,14 +107,17 @@ On demand, gather a deeper scouting profile on the current opponent(s):
 
 ### Hotkeys
 - **Ctrl+F1** — reset the game-state detector (forces new-game detection on the next poll).
-- **Ctrl+F2** — pull cross-network scouting intel on the current opponent(s).
+- **Ctrl+F2** — show scouting intel (form, maps, pro details, Aligulac, Liquipedia) on the
+  current opponent(s); reuses what was already fetched.
 
 ### Other
 - **Audio chimes** (Windows `winsound`) signal new games and notable findings.
 - Config discovery searches the **current directory** first, then the platformdirs **user
   config dir**; new configs are written to the user config dir.
-- Colored console logging plus a rotating `logs/app.log` (10 MB, 14-day retention) via loguru.
-- Optional **Aligulac API key** integration for richer pro-player data.
+- Colored console logging plus a rotating `app.log` (10 MB, 14-day retention) in the user log
+  directory (`%LOCALAPPDATA%\smurfsniper\smurfsniper\Logs` on Windows).
+- Optional **Aligulac API key** integration for richer pro-player data. The key is never logged
+  or printed in full.
 - Distributed as a self-contained **Windows `.exe`** (no Python required) via the release build.
 
 ---
@@ -233,7 +245,7 @@ smurfsniper validate --config config.yaml --show
 | Option | Description |
 |---|---|
 | `--config PATH` | Path to the config file (defaults to cwd, then user config dir). |
-| `--url URL` | SC2 game API endpoint (default `http://localhost:6119/game`). |
+| `--url URL` | SC2 client API base URL (default `http://localhost:6119`; a trailing `/game` is accepted). |
 | `--headless` | Skip the config editor GUI; load the resolved config directly. |
 | `--dry-run` | Validate the config and exit without starting the poll loop. |
 | `--set KEY=VALUE` | Override a config value inline (repeatable), e.g. `--set me.mmr=4200`. |
@@ -250,6 +262,22 @@ pytest            # Qt tests run headless (QT_QPA_PLATFORM=offscreen)
 ```
 
 Tests never touch the live network; tests marked `live` are opt-in (`pytest -m live`).
+
+Try the app without StarCraft II by running a fake client API that cycles through menu,
+loading, in-game and result screens:
+
+```bash
+python scripts/fake_sc2.py --port 6119 --script 1v1   # also: 2v2, replay, ai
+smurfsniper run --headless
+```
+
+## Data sources
+
+- Data: SC2Pulse (sc2pulse.nephest.com), non-commercial use.
+- Pro ratings from [Aligulac](https://aligulac.com) (free API key:
+  <https://aligulac.com/about/api/>).
+- Player bios from [Liquipedia](https://liquipedia.net/starcraft2) (CC-BY-SA), requested at
+  most once every 2 seconds.
 
 ## Releases & versioning
 

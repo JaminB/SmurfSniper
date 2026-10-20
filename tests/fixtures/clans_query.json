@@ -1,0 +1,35 @@
+[
+ {
+  "tag": "iX",
+  "id": 848,
+  "region": "EU",
+  "name": "team pheenix",
+  "members": 53,
+  "activeMembers": 19,
+  "avgRating": 3810,
+  "avgLeagueType": 4,
+  "games": 1247
+ },
+ {
+  "tag": "TGosuB",
+  "id": 139,
+  "region": "US",
+  "name": "TeamGosuBuild",
+  "members": 45,
+  "activeMembers": 18,
+  "avgRating": 3439,
+  "avgLeagueType": 4,
+  "games": 649
+ },
+ {
+  "tag": "TGosuP",
+  "id": 85543,
+  "region": "US",
+  "name": "Team Gosu Pro",
+  "members": 51,
+  "activeMembers": 17,
+  "avgRating": 4517,
+  "avgLeagueType": 5,
+  "games": 2009
+ }
+]

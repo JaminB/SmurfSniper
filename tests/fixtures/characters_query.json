@@ -1,0 +1,203 @@
+[
+ {
+  "leagueMax": 6,
+  "ratingMax": 7557,
+  "totalGamesPlayed": 5157,
+  "previousStats": {
+   "rating": 7065,
+   "gamesPlayed": 68,
+   "rank": 1
+  },
+  "currentStats": {
+   "rating": null,
+   "gamesPlayed": null,
+   "rank": null
+  },
+  "members": {
+   "terranGamesPlayed": 14,
+   "protossGamesPlayed": 12,
+   "zergGamesPlayed": 5131,
+   "character": {
+    "realm": 1,
+    "name": "Serral#769",
+    "id": 236695,
+    "accountId": 236695,
+    "region": "EU",
+    "battlenetId": 315071,
+    "tag": "Serral",
+    "discriminator": 769
+   },
+   "account": {
+    "battleTag": "Serral#2587",
+    "id": 236695,
+    "partition": "GLOBAL",
+    "hidden": null,
+    "tag": "Serral",
+    "discriminator": 2587
+   },
+   "clan": {
+    "tag": "BASKGG",
+    "id": 86448,
+    "region": "EU",
+    "name": "basilisk placeholder",
+    "members": 4,
+    "activeMembers": 2,
+    "avgRating": 5706,
+    "avgLeagueType": 5,
+    "games": 24
+   },
+   "proId": 1,
+   "proNickname": "Serral",
+   "proTeam": "BSLSK",
+   "proPlayer": {
+    "proPlayer": {
+     "id": 1,
+     "aligulacId": null,
+     "nickname": "Serral",
+     "name": null,
+     "country": null,
+     "birthday": null,
+     "earnings": null,
+     "updated": null,
+     "version": null
+    },
+    "proTeam": {
+     "name": null,
+     "shortName": "BSLSK",
+     "id": null,
+     "aligulacId": null,
+     "updated": null
+    },
+    "links": []
+   },
+   "raceGames": {
+    "ZERG": 5131,
+    "TERRAN": 14,
+    "PROTOSS": 12
+   }
+  }
+ },
+ {
+  "leagueMax": 6,
+  "ratingMax": 7279,
+  "totalGamesPlayed": 1985,
+  "previousStats": {
+   "rating": 6745,
+   "gamesPlayed": 123,
+   "rank": 5
+  },
+  "currentStats": {
+   "rating": 6806,
+   "gamesPlayed": 96,
+   "rank": 6
+  },
+  "members": {
+   "terranGamesPlayed": 851,
+   "protossGamesPlayed": 248,
+   "zergGamesPlayed": 886,
+   "character": {
+    "realm": 1,
+    "name": "SepeSusi#442",
+    "id": 5124994,
+    "accountId": 5124994,
+    "region": "EU",
+    "battlenetId": 8318104,
+    "tag": "SepeSusi",
+    "discriminator": 442
+   },
+   "account": {
+    "battleTag": "sepesusi#21331",
+    "id": 5124994,
+    "partition": "GLOBAL",
+    "hidden": null,
+    "tag": "sepesusi",
+    "discriminator": 21331
+   },
+   "proId": 1,
+   "proNickname": "Serral",
+   "proTeam": "BSLSK",
+   "proPlayer": {
+    "proPlayer": {
+     "id": 1,
+     "aligulacId": null,
+     "nickname": "Serral",
+     "name": null,
+     "country": null,
+     "birthday": null,
+     "earnings": null,
+     "updated": null,
+     "version": null
+    },
+    "proTeam": {
+     "name": null,
+     "shortName": "BSLSK",
+     "id": null,
+     "aligulacId": null,
+     "updated": null
+    },
+    "links": []
+   },
+   "raceGames": {
+    "ZERG": 886,
+    "TERRAN": 851,
+    "PROTOSS": 248
+   }
+  }
+ },
+ {
+  "leagueMax": 6,
+  "ratingMax": 5534,
+  "totalGamesPlayed": 1711,
+  "previousStats": {
+   "rating": 5077,
+   "gamesPlayed": 54,
+   "rank": 33373
+  },
+  "currentStats": {
+   "rating": 5053,
+   "gamesPlayed": 2,
+   "rank": 10876
+  },
+  "members": {
+   "terranGamesPlayed": 584,
+   "protossGamesPlayed": 753,
+   "zergGamesPlayed": 226,
+   "randomGamesPlayed": 148,
+   "character": {
+    "realm": 2,
+    "name": "Serral#949",
+    "id": 4844557,
+    "accountId": 4844557,
+    "region": "EU",
+    "battlenetId": 2252040,
+    "tag": "Serral",
+    "discriminator": 949
+   },
+   "account": {
+    "battleTag": "Yariska#21933",
+    "id": 4844557,
+    "partition": "GLOBAL",
+    "hidden": null,
+    "tag": "Yariska",
+    "discriminator": 21933
+   },
+   "clan": {
+    "tag": "BAS\u041aGG",
+    "id": 118822,
+    "region": "EU",
+    "name": "pikichuqow",
+    "members": null,
+    "activeMembers": null,
+    "avgRating": null,
+    "avgLeagueType": null,
+    "games": null
+   },
+   "raceGames": {
+    "PROTOSS": 753,
+    "TERRAN": 584,
+    "ZERG": 226,
+    "RANDOM": 148
+   }
+  }
+ }
+]

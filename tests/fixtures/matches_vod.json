@@ -1,0 +1,537 @@
+{
+ "result": [
+  {
+   "match": {
+    "date": "2026-10-19T19:19:37Z",
+    "type": "_1V1",
+    "id": 636801136,
+    "mapId": 55376,
+    "region": "EU",
+    "updated": "2026-10-19T23:24:52.692542Z",
+    "duration": 788
+   },
+   "map": {
+    "id": 55376,
+    "name": "At Eternity's Edge LE"
+   },
+   "participants": [
+    {
+     "participant": {
+      "matchId": 636801136,
+      "playerCharacterId": 340962349,
+      "teamId": 275190758,
+      "teamStateDateTime": "2026-10-19T19:23:18.123213Z",
+      "decision": "WIN",
+      "ratingChange": 14
+     },
+     "team": {
+      "rating": 5675,
+      "wins": 55,
+      "losses": 42,
+      "ties": 0,
+      "id": 275190758,
+      "legacyId": "1.10249549.2",
+      "divisionId": 2844937,
+      "season": 68,
+      "region": "EU",
+      "league": {
+       "type": 6,
+       "queueType": 201,
+       "teamType": 0
+      },
+      "tierType": 0,
+      "globalRank": 237,
+      "regionRank": 140,
+      "leagueRank": 28,
+      "lastPlayed": "2026-10-19T19:47:01Z",
+      "joined": "2026-10-11T19:59:30Z",
+      "primaryDataUpdated": "2026-10-19T19:50:47.164684Z",
+      "members": [
+       {
+        "protossGamesPlayed": 97,
+        "character": {
+         "realm": 1,
+         "name": "LetaleX#885",
+         "id": 340962349,
+         "accountId": 321055307,
+         "region": "EU",
+         "battlenetId": 10249549,
+         "tag": "LetaleX",
+         "discriminator": 885
+        },
+        "account": {
+         "battleTag": "LetaleX#2246",
+         "id": 321055307,
+         "partition": "GLOBAL",
+         "hidden": null,
+         "tag": "LetaleX",
+         "discriminator": 2246
+        },
+        "clan": {
+         "tag": "Heroes",
+         "id": 662,
+         "region": "EU",
+         "name": "Plat Heroes",
+         "members": 95,
+         "activeMembers": 40,
+         "avgRating": 3952,
+         "avgLeagueType": 4,
+         "games": 2338
+        },
+        "proId": 518266,
+        "proNickname": "LetaleX",
+        "proPlayer": {
+         "proPlayer": {
+          "id": 518266,
+          "aligulacId": null,
+          "nickname": "LetaleX",
+          "name": null,
+          "country": null,
+          "birthday": null,
+          "earnings": null,
+          "updated": null,
+          "version": null
+         },
+         "proTeam": null,
+         "links": []
+        },
+        "raceGames": {
+         "PROTOSS": 97
+        }
+       }
+      ],
+      "globalTeamCount": 131255,
+      "regionTeamCount": 54071,
+      "leagueTeamCount": 193,
+      "queueType": 201,
+      "teamType": 0,
+      "leagueType": 6,
+      "legacyUid": "201-0-2-1.10249549.2"
+     },
+     "teamState": {
+      "teamState": {
+       "teamId": 275190758,
+       "dateTime": "2026-10-19T19:23:18.123213Z",
+       "divisionId": null,
+       "wins": 55,
+       "games": 96,
+       "rating": 5698,
+       "globalRank": 229,
+       "regionRank": 137,
+       "leagueRank": 26,
+       "secondary": null
+      },
+      "race": null,
+      "league": {
+       "type": 6,
+       "queueType": 201,
+       "teamType": 0,
+       "id": null,
+       "seasonId": null
+      },
+      "tier": 0,
+      "season": 68,
+      "globalTeamCount": 131255,
+      "regionTeamCount": 54071,
+      "leagueTeamCount": 193
+     },
+     "twitchVodUrl": null,
+     "subOnlyTwitchVod": null
+    },
+    {
+     "participant": {
+      "matchId": 636801136,
+      "playerCharacterId": 234433,
+      "teamId": 275168940,
+      "teamStateDateTime": "2026-10-19T19:23:18.123634Z",
+      "decision": "LOSS",
+      "ratingChange": -14
+     },
+     "team": {
+      "rating": 5286,
+      "wins": 129,
+      "losses": 113,
+      "ties": 0,
+      "id": 275168940,
+      "legacyId": "1.495370.3",
+      "divisionId": 2844937,
+      "season": 68,
+      "region": "EU",
+      "league": {
+       "type": 6,
+       "queueType": 201,
+       "teamType": 0
+      },
+      "tierType": 0,
+      "globalRank": 609,
+      "regionRank": 320,
+      "leagueRank": 61,
+      "lastPlayed": "2026-10-19T21:43:09Z",
+      "joined": "2026-10-11T19:59:30Z",
+      "primaryDataUpdated": "2026-10-19T21:45:36.474344Z",
+      "members": [
+       {
+        "zergGamesPlayed": 242,
+        "character": {
+         "realm": 1,
+         "name": "Railgan#253",
+         "id": 234433,
+         "accountId": 113660,
+         "region": "EU",
+         "battlenetId": 495370,
+         "tag": "Railgan",
+         "discriminator": 253
+        },
+        "account": {
+         "battleTag": "Railgan#2597",
+         "id": 113660,
+         "partition": "GLOBAL",
+         "hidden": null,
+         "tag": "Railgan",
+         "discriminator": 2597
+        },
+        "clan": {
+         "tag": "ROOT",
+         "id": 21324,
+         "region": "EU",
+         "name": "ROOT Gaming",
+         "members": 10,
+         "activeMembers": 6,
+         "avgRating": 4347,
+         "avgLeagueType": 5,
+         "games": 422
+        },
+        "proId": 237,
+        "proNickname": "Railgan",
+        "proTeam": "ROOT",
+        "proPlayer": {
+         "proPlayer": {
+          "id": 237,
+          "aligulacId": null,
+          "nickname": "Railgan",
+          "name": null,
+          "country": null,
+          "birthday": null,
+          "earnings": null,
+          "updated": null,
+          "version": null
+         },
+         "proTeam": {
+          "name": null,
+          "shortName": "ROOT",
+          "id": null,
+          "aligulacId": null,
+          "updated": null
+         },
+         "links": []
+        },
+        "raceGames": {
+         "ZERG": 242
+        }
+       }
+      ],
+      "globalTeamCount": 131255,
+      "regionTeamCount": 54071,
+      "leagueTeamCount": 193,
+      "queueType": 201,
+      "teamType": 0,
+      "leagueType": 6,
+      "legacyUid": "201-0-2-1.495370.3"
+     },
+     "teamState": {
+      "teamState": {
+       "teamId": 275168940,
+       "dateTime": "2026-10-19T19:23:18.123634Z",
+       "divisionId": null,
+       "wins": 127,
+       "games": 234,
+       "rating": 5392,
+       "globalRank": 467,
+       "regionRank": 249,
+       "leagueRank": 47,
+       "secondary": null
+      },
+      "race": null,
+      "league": {
+       "type": 6,
+       "queueType": 201,
+       "teamType": 0,
+       "id": null,
+       "seasonId": null
+      },
+      "tier": 0,
+      "season": 68,
+      "globalTeamCount": 131255,
+      "regionTeamCount": 54071,
+      "leagueTeamCount": 193
+     },
+     "twitchVodUrl": "https://www.twitch.tv/videos/2905281231?t=75s",
+     "subOnlyTwitchVod": false
+    }
+   ]
+  },
+  {
+   "match": {
+    "date": "2026-10-18T00:00:00Z",
+    "type": "_1V1",
+    "id": 636489215,
+    "mapId": 55371,
+    "region": "US",
+    "updated": "2026-10-19T02:10:43.295471Z",
+    "duration": 427
+   },
+   "map": {
+    "id": 55371,
+    "name": "Sanctuary III LE"
+   },
+   "participants": [
+    {
+     "participant": {
+      "matchId": 636489215,
+      "playerCharacterId": 1541732,
+      "teamId": 275177331,
+      "teamStateDateTime": "2026-10-18T00:04:20.306431Z",
+      "decision": "WIN",
+      "ratingChange": 21
+     },
+     "team": {
+      "rating": 5049,
+      "wins": 436,
+      "losses": 294,
+      "ties": 0,
+      "id": 275177331,
+      "legacyId": "1.20845154.2",
+      "divisionId": 2844947,
+      "season": 68,
+      "region": "US",
+      "league": {
+       "type": 6,
+       "queueType": 201,
+       "teamType": 0
+      },
+      "tierType": 0,
+      "globalRank": 1094,
+      "regionRank": 286,
+      "leagueRank": 61,
+      "lastPlayed": "2026-10-20T00:52:28Z",
+      "joined": "2026-07-27T03:59:34Z",
+      "primaryDataUpdated": "2026-10-20T00:58:20.25559Z",
+      "members": [
+       {
+        "protossGamesPlayed": 730,
+        "character": {
+         "realm": 1,
+         "name": "Hupsaiya#110",
+         "id": 1541732,
+         "accountId": 108839,
+         "region": "US",
+         "battlenetId": 20845154,
+         "tag": "Hupsaiya",
+         "discriminator": 110
+        },
+        "account": {
+         "battleTag": "PhantomMonst#1723",
+         "id": 108839,
+         "partition": "GLOBAL",
+         "hidden": null,
+         "tag": "PhantomMonst",
+         "discriminator": 1723
+        },
+        "clan": {
+         "tag": "1NFKTD",
+         "id": 100265,
+         "region": "US",
+         "name": "Team 1NFEKTED",
+         "members": 22,
+         "activeMembers": 14,
+         "avgRating": 3215,
+         "avgLeagueType": 3,
+         "games": 1906
+        },
+        "proId": 414,
+        "proNickname": "Hupsaiya",
+        "proTeam": "PSISTM",
+        "proPlayer": {
+         "proPlayer": {
+          "id": 414,
+          "aligulacId": null,
+          "nickname": "Hupsaiya",
+          "name": null,
+          "country": null,
+          "birthday": null,
+          "earnings": null,
+          "updated": null,
+          "version": null
+         },
+         "proTeam": {
+          "name": null,
+          "shortName": "PSISTM",
+          "id": null,
+          "aligulacId": null,
+          "updated": null
+         },
+         "links": []
+        },
+        "raceGames": {
+         "PROTOSS": 730
+        }
+       }
+      ],
+      "globalTeamCount": 129541,
+      "regionTeamCount": 61228,
+      "leagueTeamCount": 204,
+      "queueType": 201,
+      "teamType": 0,
+      "leagueType": 6,
+      "legacyUid": "201-0-1-1.20845154.2"
+     },
+     "teamState": {
+      "teamState": {
+       "teamId": 275177331,
+       "dateTime": "2026-10-18T00:04:20.306431Z",
+       "divisionId": null,
+       "wins": 418,
+       "games": 697,
+       "rating": 5113,
+       "globalRank": 906,
+       "regionRank": 233,
+       "leagueRank": 50,
+       "secondary": null
+      },
+      "race": null,
+      "league": {
+       "type": 6,
+       "queueType": 201,
+       "teamType": 0,
+       "id": null,
+       "seasonId": null
+      },
+      "tier": 0,
+      "season": 68,
+      "globalTeamCount": 129541,
+      "regionTeamCount": 61228,
+      "leagueTeamCount": 204
+     },
+     "twitchVodUrl": null,
+     "subOnlyTwitchVod": null
+    },
+    {
+     "participant": {
+      "matchId": 636489215,
+      "playerCharacterId": 78328,
+      "teamId": 275176016,
+      "teamStateDateTime": "2026-10-18T00:04:20.306597Z",
+      "decision": "LOSS",
+      "ratingChange": -21
+     },
+     "team": {
+      "rating": 4935,
+      "wins": 301,
+      "losses": 170,
+      "ties": 0,
+      "id": 275176016,
+      "legacyId": "1.494763.3",
+      "divisionId": 2844947,
+      "season": 68,
+      "region": "US",
+      "league": {
+       "type": 6,
+       "queueType": 201,
+       "teamType": 0
+      },
+      "tierType": 0,
+      "globalRank": 1424,
+      "regionRank": 405,
+      "leagueRank": 94,
+      "lastPlayed": "2026-10-19T04:47:46Z",
+      "joined": "2026-10-02T03:59:35Z",
+      "primaryDataUpdated": "2026-10-19T04:51:52.807181Z",
+      "members": [
+       {
+        "zergGamesPlayed": 471,
+        "character": {
+         "realm": 1,
+         "name": "Snake#188",
+         "id": 78328,
+         "accountId": 321051315,
+         "region": "US",
+         "battlenetId": 494763,
+         "tag": "Snake",
+         "discriminator": 188
+        },
+        "account": {
+         "battleTag": "GoGoGadget#11327",
+         "id": 321051315,
+         "partition": "GLOBAL",
+         "hidden": null,
+         "tag": "GoGoGadget",
+         "discriminator": 11327
+        },
+        "proId": 517296,
+        "proNickname": "Snake",
+        "proPlayer": {
+         "proPlayer": {
+          "id": 517296,
+          "aligulacId": null,
+          "nickname": "Snake",
+          "name": null,
+          "country": null,
+          "birthday": null,
+          "earnings": null,
+          "updated": null,
+          "version": null
+         },
+         "proTeam": null,
+         "links": []
+        },
+        "raceGames": {
+         "ZERG": 471
+        }
+       }
+      ],
+      "globalTeamCount": 129541,
+      "regionTeamCount": 61228,
+      "leagueTeamCount": 204,
+      "queueType": 201,
+      "teamType": 0,
+      "leagueType": 6,
+      "legacyUid": "201-0-1-1.494763.3"
+     },
+     "teamState": {
+      "teamState": {
+       "teamId": 275176016,
+       "dateTime": "2026-10-18T00:04:20.306597Z",
+       "divisionId": null,
+       "wins": 284,
+       "games": 436,
+       "rating": 5071,
+       "globalRank": 1019,
+       "regionRank": 266,
+       "leagueRank": 57,
+       "secondary": null
+      },
+      "race": null,
+      "league": {
+       "type": 6,
+       "queueType": 201,
+       "teamType": 0,
+       "id": null,
+       "seasonId": null
+      },
+      "tier": 0,
+      "season": 68,
+      "globalTeamCount": 129541,
+      "regionTeamCount": 61228,
+      "leagueTeamCount": 204
+     },
+     "twitchVodUrl": "https://www.twitch.tv/videos/2903663756?t=4530s",
+     "subOnlyTwitchVod": false
+    }
+   ]
+  }
+ ],
+ "navigation": {
+  "before": null,
+  "after": "eyJ2IjoxLCJhIjpbIjIwMjYtMTAtMTZUMTY6NTI6MTdaIiwxLDU1MzcxLDJdfQ"
+ }
+}
