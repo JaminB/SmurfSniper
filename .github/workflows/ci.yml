@@ -35,5 +35,9 @@ jobs:
         env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
   build:
     needs: [lint, test]
+    # build.yml declares contents: write (for release uploads); a called workflow can only
+    # narrow the caller's token permissions, so the caller job must grant it explicitly.
+    # upload_to_release is false here, so nothing is written.
+    permissions: { contents: write }
     uses: ./.github/workflows/build.yml
     with: { upload_to_release: false }

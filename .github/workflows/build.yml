@@ -69,5 +69,6 @@ jobs:
         if: ${{ inputs.upload_to_release }}
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
+          if (-not '${{ inputs.tag }}') { throw "upload_to_release requires a tag" }
           $v = '${{ steps.ver.outputs.version }}'
           gh release upload "${{ inputs.tag }}" "dist\smurfsniper-$v-windows-x64.exe" dist\SHA256SUMS.txt "dist\smurfsniper-$v.cdx.json" --clobber
