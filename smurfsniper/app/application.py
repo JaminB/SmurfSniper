@@ -175,6 +175,10 @@ class SmurfSniperApp(QObject):
             QTimer.singleShot(0, self._first_run)
 
     def shutdown(self) -> None:
+        # Idempotent: the widgets deleted at the end must not be touched again.
+        if getattr(self, "_shut_down", False):
+            return
+        self._shut_down = True
         if self._wake is not None:
             self._wake.stop()
         if self.hotkeys is not None:
