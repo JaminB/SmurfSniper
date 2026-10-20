@@ -87,7 +87,7 @@ class Service(QObject):
         self.bus.game_ended.connect(self._on_game_ended)
         self.pipeline.update.connect(self.renderer.on_update)
         self.redetect_requested.connect(self.poller.force_redetect)
-        self.redetect_requested.connect(lambda: self.sounds.play("one"))
+        self.redetect_requested.connect(self._on_redetect)
         self.intel_requested.connect(self._on_intel)
 
         if self.clients.cache.disk is not None:
@@ -125,6 +125,11 @@ class Service(QObject):
             return
         profiles = self.pipeline.results(result.context.game_id)
         self._writer.submit(self._record, result, profiles)
+
+    @Slot()
+    def _on_redetect(self) -> None:
+        logger.info("Ctrl+F1: re-detecting the current game")
+        self.sounds.play("one")
 
     @Slot()
     def _on_intel(self) -> None:

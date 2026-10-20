@@ -56,21 +56,24 @@ class SoundPlayer:
         self._cache: dict[str, bytes] = {}
         self._queue: queue.Queue[str | None] = queue.Queue()
         self._thread: threading.Thread | None = None
+        self._lock = threading.Lock()
 
     def play(self, kind: str) -> None:
         """Queue a chime (``one``, ``two`` or ``three``). Never blocks or raises."""
         if not self.enabled or kind not in TONES:
             return
-        if self._thread is None:
-            self._thread = threading.Thread(target=self._run, name="sounds", daemon=True)
-            self._thread.start()
+        with self._lock:
+            if self._thread is None:
+                self._thread = threading.Thread(target=self._run, name="sounds", daemon=True)
+                self._thread.start()
         self._queue.put(kind)
 
     def stop(self) -> None:
-        if self._thread is not None:
+        with self._lock:
+            thread, self._thread = self._thread, None
+        if thread is not None:
             self._queue.put(None)
-            self._thread.join(timeout=2)
-            self._thread = None
+            thread.join(timeout=2)
 
     def _run(self) -> None:
         while True:
