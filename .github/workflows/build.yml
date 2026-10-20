@@ -25,8 +25,9 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.13" }
       - name: Check version consistency
+        env: { TAG: "${{ inputs.tag }}" }
         run: |
-          $tag = '${{ inputs.tag }}'
+          $tag = $env:TAG
           if ($tag) { python scripts/check_version.py --tag $tag } else { python scripts/check_version.py }
           if ($LASTEXITCODE -ne 0) { exit 1 }
       - name: Read version
@@ -67,8 +68,8 @@ jobs:
           if-no-files-found: error
       - name: Upload to release
         if: ${{ inputs.upload_to_release }}
-        env: { GH_TOKEN: "${{ github.token }}" }
+        env: { GH_TOKEN: "${{ github.token }}", TAG: "${{ inputs.tag }}" }
         run: |
-          if (-not '${{ inputs.tag }}') { throw "upload_to_release requires a tag" }
+          if (-not $env:TAG) { throw "upload_to_release requires a tag" }
           $v = '${{ steps.ver.outputs.version }}'
-          gh release upload "${{ inputs.tag }}" "dist\smurfsniper-$v-windows-x64.exe" dist\SHA256SUMS.txt "dist\smurfsniper-$v.cdx.json" --clobber
+          gh release upload "$env:TAG" "dist\smurfsniper-$v-windows-x64.exe" dist\SHA256SUMS.txt "dist\smurfsniper-$v.cdx.json" --clobber
