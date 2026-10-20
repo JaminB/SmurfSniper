@@ -205,8 +205,10 @@ class HttpTransport:
         headers: Mapping[str, str] | None = None,
         default_params: Mapping[str, str] | None = None,
         time_fn: Callable[[], float] = time.time,
+        log_requests: bool = True,
     ):
         self.service = service
+        self._log_requests = log_requests
         self.base_url = base_url.rstrip("/")
         self.cache = cache
         self.limiter = limiter
@@ -293,7 +295,8 @@ class HttpTransport:
             else:
                 ms = (time.perf_counter() - started) * 1000
                 status = resp.status_code
-                logger.debug(f"{self.service} {path} {status} {ms:.0f}ms cache=miss")
+                if self._log_requests:
+                    logger.debug(f"{self.service} {path} {status} {ms:.0f}ms cache=miss")
                 if self.limiter is not None:
                     self.limiter.update_from_headers(resp.headers)
 

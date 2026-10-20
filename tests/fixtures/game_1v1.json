@@ -1,0 +1,8 @@
+{
+  "isReplay": false,
+  "displayTime": 12.5,
+  "players": [
+    {"id": 1, "name": "Me", "type": "user", "race": "Terr", "result": "Undecided"},
+    {"id": 2, "name": "Serral", "type": "user", "race": "Zerg", "result": "Undecided"}
+  ]
+}
