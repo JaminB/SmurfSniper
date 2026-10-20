@@ -212,9 +212,8 @@ def validate_bindings(cfg: HotkeyConfig) -> list[BindingIssue]:
         if norm in SC2_DEFAULT_CONFLICTS or (
             len(mods) == 1 and mods[0] in _CONTROL_GROUP_MODS and key.isdigit()
         ):
-            issues.append(
-                BindingIssue(action, "warning", "SC2 uses this combo by default (control groups).")
-            )
+            what = " (control groups)" if key.isdigit() else ""
+            issues.append(BindingIssue(action, "warning", f"SC2 uses this combo by default{what}."))
     return issues
 
 
@@ -265,6 +264,7 @@ class HotkeyManager(QObject):
     # ---------------------------------------------------------------- internals
     def _register(self) -> list[BindingIssue]:
         self._unregister()
+        self.unavailable = False
         if not self.config.enabled:
             return []
         try:

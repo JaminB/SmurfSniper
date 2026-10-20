@@ -197,3 +197,14 @@ def test_unavailable_keyboard_reports_errors(monkeypatch):
     assert mgr.unavailable
     assert issues and all(i.level == "error" for i in issues)
     assert "administrator" in issues[0].message
+    # once the hook can be installed again, the warning clears
+    monkeypatch.setitem(sys.modules, "keyboard", FakeKeyboard())
+    assert not [i for i in mgr.apply(HotkeyConfig()) if i.level == "error"]
+    assert not mgr.unavailable
+
+
+def test_conflict_warning_text_names_control_groups_only_for_digits(kb):
+    cfg = HotkeyConfig(session="ctrl+f1", rivals="alt+3")
+    by = {i.action: i.message for i in issues_for(cfg, "warning")}
+    assert "control groups" not in by[HotkeyAction.SESSION]
+    assert "control groups" in by[HotkeyAction.RIVALS]
