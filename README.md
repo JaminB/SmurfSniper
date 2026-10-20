@@ -51,7 +51,9 @@ time you queue into them you see your head-to-head history at a glance.
   rank, peak MMR, full rating history and recent matches.
 - Candidates must match the in-game name exactly; they are ranked by your **±500 MMR window**
   (your MMR, kept up to date automatically; widened to ±1000 if nobody fits), the race seen in game and recent activity.
-- Lookups run in stages and the overlay appears as soon as identity, rating and history are in.
+- Lookups run in stages. The opponent card appears with just the name and race within a
+  moment of the game starting and **grows a row at a time** as rating, smurf analysis,
+  head-to-head and tendencies arrive.
 - Responses are cached in memory and on disk (SQLite) with per-endpoint lifetimes, so a
   rematch or a hotkey never re-downloads what was already fetched. A cold 1v1 lookup costs at
   most 7 SC2Pulse requests; a warm one costs none.
@@ -78,7 +80,8 @@ time you queue into them you see your head-to-head history at a glance.
 
 ### Head-to-head history
 - Every opponent encounter is written to a local **SQLite** database.
-- On future runs, dedicated player-log overlays show your **record vs. that opponent**.
+- On future runs, the opponent card shows your **record vs. that opponent** (e.g. `You 3-1 ·
+  2d ago`).
 - Each row stores the game mode, both races, game length and your own result, and a game is
   never logged twice. Older databases are migrated automatically.
 
@@ -95,7 +98,9 @@ APIs only:
 ### Tray app and Settings
 - SmurfSniper lives in the **system tray**: no console window, logs go to a file. Left-click
   the icon for the hotkey cheat-sheet; right-click for the menu (Hotkeys, Settings, Change
-  account, Pause lookups, Hide HUD, Sounds, open the logs or data folder, Quit).
+  account, Last opponent links, Pause lookups, Hide HUD, Sounds, open the logs or data folder,
+  Quit). *Last opponent links* opens the Liquipedia / Twitch / Aligulac pages found by
+  scouting intel (overlays are click-through, so links live in the tray).
 - A modern **Settings window** (dark, instant apply, no Save button) with five tabs: Account,
   Overlays, Hotkeys, Integrations and Advanced. No YAML editing is needed.
 - **Auto-detected account**: SmurfSniper learns your in-game name from the games you play,
@@ -104,13 +109,28 @@ APIs only:
   you choose your account; "Detect automatically" skips it.
 - Only one instance runs at a time; a second launch exits with a notice.
 
+### HUD
+A compact, glass-style HUD that only takes space for information that exists:
+- **Opponent card** (top centre by default, at most about 320x170 px for a 1v1): name, clan,
+  region and race badge first, then MMR, league and regional rank, a colour-coded smurf badge
+  (`SUSPICIOUS` / `POSSIBLE SMURF` / `LIKELY SMURF` + score) with its top reasons, MMR trend
+  bars with recent records, your head-to-head record and their win rate vs. your race. Rows
+  with no data are never drawn. 2v2 adds a team strip; 3v3/4v4 use one line per opponent.
+  It fades out 45 s after its last update and its hotkey brings it back from cache.
+- **Toasts** (top right): small notices that fade on their own, e.g. a likely smurf when the
+  card is hidden, or SC2Pulse being unreachable.
+- **Panels** on demand (scouting intel now; session and rivals later). Each panel's header
+  shows its hotkey as a chip, and the same hotkey closes it.
+- A **hotkey hint** pill at the start of a game lists the hotkeys (shortened after 5 games).
+- Race-coloured accent bars, fade/slide animations, adjustable opacity and scale. Nothing
+  shows in menus or replays except toasts and panels you ask for.
+
 ### Configurable overlays
 - Frameless, transparent, **always-on-top** and **click-through** widgets that never take
-  the mouse.
+  the mouse or keyboard focus.
 - Opacity (40-100%) and size (75-150%) sliders, a screen selector, and per-surface placement:
   a 3x3 anchor grid plus X/Y offsets for the opponent card, toasts, panels and hotkey hint.
   *Preview on screen* shows samples at the configured spots.
-- Lines with no data are left out instead of showing placeholders.
 - Overlays appear above SC2 in **Windowed (Fullscreen)** or windowed mode, **not** in
   exclusive fullscreen.
 
@@ -259,6 +279,13 @@ loading, in-game and result screens:
 ```bash
 python scripts/fake_sc2.py --port 6119 --script 1v1   # also: 2v2, replay, ai
 smurfsniper run --no-tray
+```
+
+Render every HUD component (card stages, 2v2, 4v4, toasts, panels, hint and a full-screen
+composite) to PNGs at 100% and 125% scale, without a display:
+
+```bash
+python scripts/render_preview.py --out previews        # --only card renders just the cards
 ```
 
 ## Data sources

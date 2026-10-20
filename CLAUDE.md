@@ -43,7 +43,8 @@ python scripts/fake_sc2.py --port 6119 --script 1v1     # fake SC2 client for ma
   **1** opponent card (toggle), **2** scouting intel (toggle), **3** session tracker and **4**
   rivals (reserved for a later branch), **R** re-detect game (new game id on the next in-game
   poll), **`** hide/show all (resets on the next game). Overlays are click-through, so every
-  panel is dismissed by pressing its hotkey again or the hide-all key.
+  panel is dismissed by pressing its hotkey again or the hide-all key; each panel shows its
+  hotkey as a chip in its header, and a hint pill lists the hotkeys at game start.
 
 ## Architecture
 
@@ -56,11 +57,17 @@ EventBus (main thread) ──> Service            SmurfSniperApp (app/applicatio
    ├─ LookupPipeline.start(ctx)   (ThreadPoolExecutor, all network I/O)
    │     GAME -> IDENTITY -> RATING / SMURF / H2H / TENDENCIES / INTEL, TEAM for 2v2+
    │     update(LookupUpdate) queued to main thread
-   ├─ LegacyRenderer.on_update     (ui/legacy_render.py -> legacy Overlay widgets)
    └─ on game_ended: PlayerLogStore.record_game on a writer thread, then
       AccountService.refresh_mmr_after_game (20 s / 90 s / 300 s retries)
 
-HotkeyManager (keyboard thread -> triggered signal) -> SmurfSniperApp._on_hotkey -> Service
+EventBus + LookupPipeline.update ──> HudController (ui/hud.py, main thread)
+   ├─ OpponentCard: one row on GAME, rows inserted as stages land (never empty rows)
+   ├─ ToastStack (bus.toast_requested, smurf / SC2Pulse-down / "no intel" notices)
+   ├─ PanelHost: one on-demand panel (intel; branch 5 registers session / rivals)
+   └─ HotkeyHint at game start; visibility rules per GameState (see below)
+
+HotkeyManager (keyboard thread -> triggered signal) -> SmurfSniperApp._on_hotkey
+   -> Service.request_redetect (R) | HudController.on_hotkey (everything else)
 TrayController / SettingsWindow -> SmurfSniperApp.apply_config(new) -> in-place update of the
 shared Config, hotkeys re-bound, clients rebuilt, debounced atomic save (500 ms)
 ```
@@ -70,14 +77,23 @@ I/O happens only on the lookup executor and the poller QThread; workers reach th
 emitting signals. `keyboard` callbacks only emit a signal. The transport logs a warning (tests
 raise) if a request is made on the GUI thread.
 
+HUD visibility ("auto" = shown without a hotkey): the card and hint auto-show only in
+`IN_GAME` (or `REPLAY` with `overlays.show_in_replays`); they are dismissed in menus, loading
+and results. Toasts are allowed everywhere except replays. Hotkey panels always work. Hide-all
+dismisses everything and drops toasts until a card/panel hotkey is pressed or the next game
+starts. The card auto-hides `card.auto_hide_seconds` after its **last** row change; its hotkey
+re-shows it from cached profiles (no network) during the game and for 10 minutes after it.
+Likely/possible smurfs chime (two-tone / one-tone); a likely smurf also toasts when the card is
+not on screen. An SC2Pulse failure on IDENTITY toasts once per game.
+
 ## Module map
 
 Top level (`smurfsniper/`):
 - `cli.py` — Click CLI: `run`, `validate`, `cache stats|clear`, hidden `self-test` (CI exe
   smoke test: imports every module, loads assets, builds the Settings window).
-- `service.py` — `Service` (wires poller -> bus -> pipeline -> legacy UI, chimes, pause, hide
-  all, tray status text). Hotkey actions arrive as `request_redetect`, `toggle_opponent_card`,
-  `toggle_intel`, `toggle_hide_all`.
+- `service.py` — `Service` (wires poller -> bus -> pipeline, player-log writes, pause, tray
+  status text, `request_redetect()`). It creates no widgets; the HUD subscribes to the bus and
+  the pipeline.
 - `paths.py` — platformdirs locations (`config_dir`, `data_dir`, `cache_dir`, `log_dir`,
   `db_path`, `http_cache_path`, `state_path`, `lock_path`) and `ensure_dirs()`. Nothing
   touches disk at import.
@@ -91,7 +107,8 @@ Top level (`smurfsniper/`):
 - `application.py` — `SmurfSniperApp`: QApplication, single-instance lock, services, tray,
   hotkey routing, `apply_config()`, picker/settings/cheat-sheet windows, first-run state in
   `user_data_dir/state.json`.
-- `tray.py` — `TrayController` (`QSystemTrayIcon` + menu; left-click opens the cheat-sheet).
+- `tray.py` — `TrayController` (`QSystemTrayIcon` + menu; left-click opens the cheat-sheet;
+  "Last opponent links" submenu rebuilt from INTEL updates via `set_links()`).
 - `hotkeys.py` — `HotkeyAction`, `DEFAULT_BINDINGS`, `validate_bindings`, `to_display`,
   `from_qkeysequence`, `HotkeyManager` (registers with `suppress=False`, 300 ms debounce, emits
   `triggered` from the keyboard thread).
@@ -155,14 +172,37 @@ Top level (`smurfsniper/`):
   unknown keys and validate on assignment.
 
 `ui/` (PySide6; the only place widgets are created):
-- `overlays.py` — legacy `Overlay` QWidget (frameless, transparent, click-through) with
-  anchor + offset placement, plus `show_sample()` for the Settings preview.
-- `overlay_manager.py` — `register_overlay()`, `close_all_overlays()`.
-- `legacy_render.py` — `LegacyRenderer`: `LookupUpdate`s -> legacy overlays (main, team,
-  head-to-head, intel). `toggle(kind)` re-shows/closes from cached profiles (no network),
-  `set_hidden()` is the hide-all state. Never renders placeholder rows.
-- `tokens.py` — design tokens (colours, radii, fonts, chip style); `theme.py` — QSS for normal
-  windows built from the tokens.
+- `hud.py` — `HudController`: owns the card, toast stack, panel slot and hint; slots
+  `on_state`, `on_game_started`, `on_update`, `on_game_ended`, `on_hotkey`, `on_toast`,
+  `on_config`; `register_panel(action, title, build_body, ensure=)` for branch-5 panels;
+  `set_hidden()` (hide-all), `preview()` (Settings "Preview on screen"),
+  `reset_for_new_game()` (stops every timer). Emits `hidden_changed`, `links_changed`.
+- `overlay/` — the overlay framework:
+  - `base.py` — `OverlayWindow` (frameless, `Tool`, top-most, `WindowTransparentForInput`,
+    `WindowDoesNotAcceptFocus`, `WA_ShowWithoutActivating`; `reveal()` fade + slide,
+    `dismiss()` fade out and hide, `reposition()`, `set_tokens()`), `Surface` (painted glass:
+    rounded fill at the configured opacity, border, 3px race accent bar, drop shadow),
+    `anchor_point()` placement (bottom anchors grow upward), `set_animations_enabled()`.
+  - `widgets.py` — `Text` (token font, optional elide), `Badge` (smurf / PRO), `Chip`
+    (hotkey), `RaceDot`, `Sparkline` (painted bars from the analysis string), `Divider`,
+    `Skeleton` (the only allowed placeholder: a pulsing loading row while a stage runs),
+    `Row.create()` (returns None when every text part is empty), `Section`, `key_row()`.
+  - `card.py` — `OpponentCard` (1v1 full, 2v2 "duo" + `TeamStrip`, 3v3+ compact),
+    `OpponentSection` (fixed row order: identity, rating, smurf reasons, trend + records,
+    H2H, tendencies; `set_*` only adds rows that have data).
+  - `toast.py` — `ToastSpec`, `Toast`, `ToastStack` (newest at the anchor edge, same `id`
+    replaces in place and resets its timer, `max_visible`).
+  - `panel.py` — `Panel` (title + `[hotkey ✕]` chip header, `set_body`, `set_loading`),
+    `PanelHost` (one slot: a panel's hotkey toggles it, another panel's swaps it).
+  - `hint.py` — `HotkeyHint` pill (full list for the first 5 games of a run, then hide + card).
+- `panels/intel.py` — `build_intel_body()` (pro, Aligulac, earnings, Liquipedia extract, form,
+  maps, link types) and `links_of()` for the tray menu.
+- `fmt.py` — pure text helpers (league, top %, records, H2H, tendencies, flags, Aligulac);
+  each returns None instead of a placeholder.
+- `preview_data.py` — typed fake profiles used by previews and tests.
+- `tokens.py` — design tokens (colours, radii, fonts, sizes, paddings, animation timings, smurf
+  and PRO badge colours) and `TokenContext(opacity, scale, screen)` with `px()`; `theme.py` —
+  QSS for normal windows built from the tokens.
 - `frameless.py` — `FramelessDialog` (rounded, draggable, Esc closes).
 - `account_picker.py` — `AccountPickerDialog` (debounced search, candidate rows).
 - `cheatsheet.py` — `HotkeyCheatSheet` (hotkey chips; closes on Esc / focus loss).
@@ -210,8 +250,9 @@ atomically (tmp file + `os.replace`).
   `teammates` (treated as allies). `mmr_for(queue)`: override > queue > 1v1 > None.
 - `overlays`: `opacity` (0.40-1.0), `scale` (0.75-1.5), `screen`, `show_in_replays`, and
   `card` / `toasts` / `hint` / `panels` blocks, each with a `placement` (`anchor` one of nine
-  points plus `offset_x` / `offset_y` px at scale 1.0). The legacy overlays use `card` for the
-  opponent card and team, `toasts` for head-to-head and `panels` for intel.
+  points plus `offset_x` / `offset_y` px at scale 1.0). `card.enabled` only controls the
+  automatic show (the hotkey still works), `card.auto_hide_seconds` (0 = stay all game),
+  `toasts.seconds` / `max_visible`, `hint.seconds`; `panels` places every on-demand panel.
 - `hotkeys`: `opponent_card`, `intel`, `session`, `rivals`, `redetect`, `hide_all` (strings in
   the `keyboard` library format, e.g. `ctrl+shift+1`) and `enabled`.
 - `integrations`: `aligulac_api_key`, `liquipedia_enabled`, `liquipedia_contact`.
@@ -259,4 +300,11 @@ and "Detect automatically" has not been chosen (`state.json`).
 - `keyboard` callbacks may only emit a signal. Overlays are click-through and only appear above
   SC2 in Windowed (Fullscreen) or windowed mode, not exclusive fullscreen.
 - `scripts/make_version_file.py` writes the Windows version resource used by the spec.
+- HUD previews: `python scripts/render_preview.py [--out previews] [--only card]` renders every
+  overlay component offscreen at scales 1.0 and 1.25 (gitignored `previews/`). Overlay code
+  takes sizes and colours only from `ui/tokens.py` via `TokenContext`; text comes from
+  `ui/fmt.py` helpers that return None, and rows are built with `Row.create()` so missing data
+  never takes space.
+- Overlay callbacks: connect timers and animations to bound methods or widget signals, not
+  lambdas that capture the owning window (a Python reference cycle crashed on GC).
 - `config.yaml` is gitignored. Never commit API keys; the CLI masks the Aligulac key.
